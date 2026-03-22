@@ -368,8 +368,9 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
 // ── Droppable column ───────────────────────────────────────────────────────
 
-type ColPriorityFilter = 'all' | 'low' | 'medium' | 'high' | 'critical'
-type ColDueDateFilter  = 'all' | 'overdue' | 'today' | 'week'
+type ColPriorityFilter   = 'all' | 'low' | 'medium' | 'high' | 'critical'
+type ColDueDateFilter    = 'all' | 'overdue' | 'today' | 'week'
+type CompletedPeriod     = 'today' | 'week' | 'month' | 'all'
 
 function applyColumnFilters(
   tasks: Task[],
@@ -402,6 +403,29 @@ function applyColumnFilters(
   return result
 }
 
+function applyCompletedPeriod(tasks: Task[], period: CompletedPeriod): Task[] {
+  if (period === 'all') return tasks
+  const now   = new Date()
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const start = new Date(today)
+  if (period === 'week') {
+    // Start of current week (Sunday)
+    start.setDate(today.getDate() - today.getDay())
+  } else if (period === 'month') {
+    start.setDate(1)
+  }
+  return tasks.filter((t) => {
+    const date = t.completedAt ? new Date(t.completedAt) : null
+    if (!date) return false
+    return date >= start && date <= now
+  })
+}
+
+function completedPeriodSelectCls(value: CompletedPeriod) {
+  if (value === 'all') return `${SELECT_BASE} ${SELECT_INACTIVE}`
+  return `${SELECT_BASE} border-accent-green/40 text-accent-green bg-accent-green/10`
+}
+
 const SELECT_BASE = 'flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none'
 const SELECT_INACTIVE = 'border-bg-border text-text-muted hover:border-bg-border/80'
 
@@ -421,11 +445,15 @@ function KanbanColumn({ column, tasks }: {
   tasks: Task[]
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
-  const [colPriority, setColPriority] = useState<ColPriorityFilter>('all')
-  const [colDueDate,  setColDueDate]  = useState<ColDueDateFilter>('all')
+  const [colPriority,      setColPriority]      = useState<ColPriorityFilter>('all')
+  const [colDueDate,       setColDueDate]        = useState<ColDueDateFilter>('all')
+  const [completedPeriod,  setCompletedPeriod]   = useState<CompletedPeriod>('today')
 
-  const visible = applyColumnFilters(tasks, colPriority, colDueDate)
-  const filtered = colPriority !== 'all' || colDueDate !== 'all'
+  const isCompleted = column.id === 'completed'
+
+  const afterPeriod = isCompleted ? applyCompletedPeriod(tasks, completedPeriod) : tasks
+  const visible     = applyColumnFilters(afterPeriod, colPriority, colDueDate)
+  const filtered    = (isCompleted && completedPeriod !== 'all') || colPriority !== 'all' || colDueDate !== 'all'
 
   return (
     <div className="flex flex-col min-w-0 flex-1">
@@ -441,29 +469,44 @@ function KanbanColumn({ column, tasks }: {
       </div>
 
       {/* Column filters */}
-      <div className="flex gap-1.5 mb-2 px-1">
-        <select
-          value={colPriority}
-          onChange={(e) => setColPriority(e.target.value as ColPriorityFilter)}
-          className={prioritySelectCls(colPriority !== 'all')}
-        >
-          <option value="all">Prioridade</option>
-          <option value="low">Baixa</option>
-          <option value="medium">Média</option>
-          <option value="high">Alta</option>
-          <option value="critical">Crítica</option>
-        </select>
+      <div className="flex flex-col gap-1.5 mb-2 px-1">
+        <div className="flex gap-1.5">
+          <select
+            value={colPriority}
+            onChange={(e) => setColPriority(e.target.value as ColPriorityFilter)}
+            className={prioritySelectCls(colPriority !== 'all')}
+          >
+            <option value="all">Prioridade</option>
+            <option value="low">Baixa</option>
+            <option value="medium">Média</option>
+            <option value="high">Alta</option>
+            <option value="critical">Crítica</option>
+          </select>
 
-        <select
-          value={colDueDate}
-          onChange={(e) => setColDueDate(e.target.value as ColDueDateFilter)}
-          className={dueDateSelectCls(colDueDate)}
-        >
-          <option value="all">Vencimento</option>
-          <option value="overdue">Vencidas</option>
-          <option value="today">Hoje</option>
-          <option value="week">Próx. 7 dias</option>
-        </select>
+          <select
+            value={colDueDate}
+            onChange={(e) => setColDueDate(e.target.value as ColDueDateFilter)}
+            className={dueDateSelectCls(colDueDate)}
+          >
+            <option value="all">Vencimento</option>
+            <option value="overdue">Vencidas</option>
+            <option value="today">Hoje</option>
+            <option value="week">Próx. 7 dias</option>
+          </select>
+        </div>
+
+        {isCompleted && (
+          <select
+            value={completedPeriod}
+            onChange={(e) => setCompletedPeriod(e.target.value as CompletedPeriod)}
+            className={`${completedPeriodSelectCls(completedPeriod)} w-full`}
+          >
+            <option value="today">Concluídas hoje</option>
+            <option value="week">Esta semana</option>
+            <option value="month">Este mês</option>
+            <option value="all">Todas</option>
+          </select>
+        )}
       </div>
 
       {/* Drop zone */}
