@@ -11,7 +11,7 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="flex h-full gap-0 animate-fade-in -mx-6 -my-6">
+    <div className="flex h-full gap-0 animate-fade-in">
       {/* Sidebar */}
       <div className="w-64 flex-shrink-0 border-r border-bg-border flex flex-col h-full">
         {/* Header */}

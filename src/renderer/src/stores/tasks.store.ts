@@ -2,9 +2,13 @@ import { create } from 'zustand'
 import type { Task, CreateTaskInput, TaskStatus } from '../../../shared/types'
 import { usePetStore } from './pet.store'
 
+export type TaskSort = 'created' | 'priority' | 'dueDate'
+
 interface TasksStore {
   tasks: Task[]
   filter: TaskStatus | 'all'
+  search: string
+  sort: TaskSort
   isLoading: boolean
 
   load: () => Promise<void>
@@ -17,14 +21,20 @@ interface TasksStore {
   toggleSubtask: (taskId: string, subtaskId: string) => Promise<void>
   removeSubtask: (taskId: string, subtaskId: string) => Promise<void>
   setFilter: (filter: TaskStatus | 'all') => void
+  setSearch: (search: string) => void
+  setSort: (sort: TaskSort) => void
 
   getFiltered: () => Task[]
   getTodayCount: () => { total: number; completed: number }
 }
 
+const PRIORITY_ORDER: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 }
+
 export const useTasksStore = create<TasksStore>((set, get) => ({
   tasks: [],
   filter: 'all',
+  search: '',
+  sort: 'created',
   isLoading: false,
 
   load: async () => {
@@ -114,11 +124,37 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   },
 
   setFilter: (filter) => set({ filter }),
+  setSearch: (search) => set({ search }),
+  setSort: (sort) => set({ sort }),
 
   getFiltered: () => {
-    const { tasks, filter } = get()
-    if (filter === 'all') return tasks
-    return tasks.filter((t) => t.status === filter)
+    const { tasks, filter, search, sort } = get()
+    let result = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter)
+
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          t.description?.toLowerCase().includes(q) ||
+          t.tags.some((tag) => tag.toLowerCase().includes(q)),
+      )
+    }
+
+    result = [...result].sort((a, b) => {
+      if (sort === 'priority') {
+        return (PRIORITY_ORDER[b.priority] ?? 0) - (PRIORITY_ORDER[a.priority] ?? 0)
+      }
+      if (sort === 'dueDate') {
+        if (!a.dueDate && !b.dueDate) return 0
+        if (!a.dueDate) return 1
+        if (!b.dueDate) return -1
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+
+    return result
   },
 
   getTodayCount: () => {

@@ -48,7 +48,7 @@ export default function App() {
       <AchievementToast />
       <Sidebar current={page} onChange={setPage} />
 
-      <main className={`flex-1 overflow-y-auto ${isNotes ? '' : 'p-6'}`}>
+      <main className={`flex-1 overflow-hidden ${isNotes ? '' : 'overflow-y-auto p-6'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={page}

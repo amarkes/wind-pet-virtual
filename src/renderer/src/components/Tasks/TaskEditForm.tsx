@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { X } from 'lucide-react'
+import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { X, Tag } from 'lucide-react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import type { Task, TaskPriority, TaskDifficulty } from '../../../../shared/types'
@@ -11,12 +11,32 @@ interface Props {
 }
 
 export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
-  const [title, setTitle]           = useState(task.title)
+  const [title, setTitle]             = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
-  const [priority, setPriority]     = useState<TaskPriority>(task.priority)
-  const [difficulty, setDifficulty] = useState<TaskDifficulty>(task.difficulty)
-  const [estimated, setEstimated]   = useState(task.estimatedMinutes?.toString() ?? '')
-  const [loading, setLoading]       = useState(false)
+  const [priority, setPriority]       = useState<TaskPriority>(task.priority)
+  const [difficulty, setDifficulty]   = useState<TaskDifficulty>(task.difficulty)
+  const [estimated, setEstimated]     = useState(task.estimatedMinutes?.toString() ?? '')
+  const [dueDate, setDueDate]         = useState(task.dueDate ?? '')
+  const [tags, setTags]               = useState<string[]>(task.tags ?? [])
+  const [tagInput, setTagInput]       = useState('')
+  const [loading, setLoading]         = useState(false)
+
+  function addTag() {
+    const trimmed = tagInput.trim().toLowerCase()
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags((prev) => [...prev, trimmed])
+    }
+    setTagInput('')
+  }
+
+  function handleTagKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addTag()
+    } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
+      setTags((prev) => prev.slice(0, -1))
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -29,6 +49,8 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
       priority,
       difficulty,
       estimatedMinutes: estimated ? parseInt(estimated) : undefined,
+      dueDate: dueDate || undefined,
+      tags,
     })
     setLoading(false)
   }
@@ -87,14 +109,60 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <Input
-        label="Estimativa (minutos)"
-        type="number"
-        placeholder="ex: 60"
-        value={estimated}
-        onChange={(e) => setEstimated(e.target.value)}
-        min="1"
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Estimativa (minutos)"
+          type="number"
+          placeholder="ex: 60"
+          value={estimated}
+          onChange={(e) => setEstimated(e.target.value)}
+          min="1"
+        />
+        <Input
+          label="Vencimento"
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </div>
+
+      {/* Tags */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs text-text-secondary font-medium flex items-center gap-1">
+          <Tag size={11} /> Tags
+        </label>
+        <div
+          className="input-base flex flex-wrap gap-1.5 min-h-[2.25rem] cursor-text"
+          onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement)?.focus()}
+        >
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
+                         bg-primary/15 text-primary-light text-[11px] font-medium"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
+                className="hover:text-primary"
+              >
+                <X size={9} />
+              </button>
+            </span>
+          ))}
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            onBlur={addTag}
+            placeholder={tags.length === 0 ? 'Adicionar tag...' : ''}
+            className="flex-1 min-w-[80px] bg-transparent outline-none text-xs text-text-primary
+                       placeholder:text-text-muted"
+          />
+        </div>
+        <p className="text-[10px] text-text-muted">Enter ou vírgula para adicionar</p>
+      </div>
 
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

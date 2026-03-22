@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Check, Trash2, ChevronDown, ChevronUp, Clock,
   Pencil, XCircle, Sparkles, Loader2, CheckSquare, Square, X,
+  CalendarClock, Tag,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task, Subtask } from '../../../../shared/types'
@@ -24,6 +25,23 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   easy: 'Fácil', medium: 'Média', hard: 'Difícil', epic: 'Épica',
 }
 
+function getDueDateStatus(dueDate: string, status: string): 'overdue' | 'today' | 'soon' | 'future' | null {
+  if (status === 'completed' || status === 'cancelled') return null
+  const due = new Date(dueDate + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return 'overdue'
+  if (diff === 0) return 'today'
+  if (diff <= 2) return 'soon'
+  return 'future'
+}
+
+function formatDueDate(dueDate: string): string {
+  const due = new Date(dueDate + 'T00:00:00')
+  return due.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
 export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit }: Props) {
   const [expanded, setExpanded]         = useState(false)
   const [editing, setEditing]           = useState(false)
@@ -35,6 +53,22 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
 
   const { breakIntoSubtasks, isLoading: aiLoading } = useAIStore()
   const { addSubtask, toggleSubtask, removeSubtask } = useTasksStore()
+
+  const dueDateStatus = task.dueDate ? getDueDateStatus(task.dueDate, task.status) : null
+
+  const dueDateColors: Record<string, string> = {
+    overdue: 'text-red-400 bg-red-500/10 border-red-500/20',
+    today:   'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    soon:    'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+    future:  'text-text-muted bg-bg-border/30 border-bg-border',
+  }
+
+  const dueDateLabels: Record<string, string> = {
+    overdue: 'Atrasada',
+    today:   'Hoje',
+    soon:    formatDueDate(task.dueDate!),
+    future:  formatDueDate(task.dueDate!),
+  }
 
   async function handleBreakDown() {
     setBreakingDown(true)
@@ -48,6 +82,7 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
 
   const subtasks = task.subtasks ?? []
   const subtasksDone = subtasks.filter((s) => s.completed).length
+  const hasExpandable = task.description || subtasks.length > 0
 
   return (
     <motion.div
@@ -94,11 +129,18 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
             )}
           </div>
 
+          {/* Meta row */}
           <div className="flex items-center gap-3 mt-1 flex-wrap">
             {task.estimatedMinutes && (
               <div className="flex items-center gap-1">
                 <Clock size={11} className="text-text-muted" />
                 <span className="text-[11px] text-text-muted">{task.estimatedMinutes} min</span>
+              </div>
+            )}
+            {task.dueDate && dueDateStatus && (
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium ${dueDateColors[dueDateStatus]}`}>
+                <CalendarClock size={10} />
+                {dueDateLabels[dueDateStatus]}
               </div>
             )}
             {subtasks.length > 0 && (
@@ -107,6 +149,22 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
               </span>
             )}
           </div>
+
+          {/* Tags */}
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+              <Tag size={10} className="text-text-muted flex-shrink-0" />
+              {task.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-bg-border/50 text-text-muted
+                             border border-bg-border/60 font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Expandable: description + subtasks */}
           <AnimatePresence>
@@ -157,7 +215,7 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
 
         {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {(task.description || subtasks.length > 0) && !editing && (
+          {hasExpandable && !editing && (
             <button
               onClick={() => setExpanded((v) => !v)}
               className="btn-ghost p-1 rounded"
