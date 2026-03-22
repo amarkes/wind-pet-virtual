@@ -1,8 +1,27 @@
+// ── Audit Log ─────────────────────────────────────────────────────────────
+
+export type AuditAction = 'created' | 'updated' | 'completed' | 'cancelled' | 'deleted'
+
+export interface AuditLog {
+  id: string
+  taskId: string
+  taskTitle: string
+  action: AuditAction
+  timestamp: string
+  details?: string
+}
+
 // ── Task ──────────────────────────────────────────────────────────────────
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical'
 export type TaskDifficulty = 'easy' | 'medium' | 'hard' | 'epic'
+
+export interface Subtask {
+  id: string
+  title: string
+  completed: boolean
+}
 
 export interface Task {
   id: string
@@ -17,6 +36,7 @@ export interface Task {
   createdAt: string
   updatedAt: string
   completedAt?: string
+  subtasks?: Subtask[]
 }
 
 export type CreateTaskInput = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
@@ -63,6 +83,85 @@ export interface AppSettings {
   pomodoroMinutes: number
   shortBreakMinutes: number
   longBreakMinutes: number
+  geminiApiKey?: string
+  workingDirectory?: string
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────
+
+export interface AISuggestion {
+  difficulty: TaskDifficulty
+  estimatedMinutes: number
+  reasoning: string
+}
+
+export interface CommitInfo {
+  hash: string
+  message: string
+  author: string
+  date: string
+  additions: number
+  deletions: number
+}
+
+export interface CommitAnalysis {
+  commits: CommitInfo[]
+  feedback: string
+  score: number
+  tips: string[]
+  petMood: PetMood
+  petMessage: string
+}
+
+export interface DailyReview {
+  tasksCompleted: number
+  tasksCreated: number
+  tasksOverdue: number
+  pomodoroSessions: number
+  score: number
+  summary: string
+  tips: string[]
+  petMessage: string
+  petMood: PetMood
+}
+
+// ── Focus Monitoring ──────────────────────────────────────────────────────
+
+export interface FocusSession {
+  id: string
+  startedAt: string
+  endedAt?: string
+  durationSeconds?: number
+}
+
+export interface DayFocusSummary {
+  date: string               // YYYY-MM-DD
+  totalFocusSeconds: number  // time window was focused
+  totalAwaySeconds: number   // time window was away
+  sessions: number
+}
+
+// ── Achievements ──────────────────────────────────────────────────────────
+
+export type AchievementId =
+  | 'first_task'
+  | 'tasks_10'
+  | 'tasks_50'
+  | 'streak_7'
+  | 'epic_slayer'
+  | 'note_taker'
+  | 'commit_analyzer'
+  | 'level_5'
+  | 'subtask_master'
+  | 'daily_reviewer'
+  | 'focus_hour'
+
+export interface Achievement {
+  id: AchievementId
+  title: string
+  description: string
+  icon: string
+  unlockedAt?: string
 }
 
 // ── Window API (exposed by preload) ───────────────────────────────────────
@@ -74,6 +173,10 @@ export interface WindowApi {
     update: (id: string, data: Partial<Task>) => Promise<Task | null>
     delete: (id: string) => Promise<boolean>
     complete: (id: string) => Promise<Task | null>
+    cancel: (id: string) => Promise<Task | null>
+    addSubtask: (taskId: string, title: string) => Promise<Task | null>
+    toggleSubtask: (taskId: string, subtaskId: string) => Promise<Task | null>
+    removeSubtask: (taskId: string, subtaskId: string) => Promise<Task | null>
   }
   notes: {
     getAll: () => Promise<Note[]>
@@ -90,6 +193,42 @@ export interface WindowApi {
   settings: {
     get: () => Promise<AppSettings>
     update: (data: Partial<AppSettings>) => Promise<AppSettings>
+  }
+  audit: {
+    getAll: () => Promise<AuditLog[]>
+  }
+  ai: {
+    suggestTask: (title: string) => Promise<AISuggestion>
+    breakIntoSubtasks: (taskTitle: string, taskDescription?: string) => Promise<string[]>
+    analyzeCommits: (repoPath: string, limit?: number) => Promise<CommitAnalysis>
+    dailyReview: () => Promise<DailyReview>
+    noteToTasks: (content: string) => Promise<string[]>
+    summarizeNote: (content: string) => Promise<string>
+  }
+  focus: {
+    getSummaries: (days?: number) => Promise<DayFocusSummary[]>
+    getCurrentSession: () => Promise<FocusSession | null>
+  }
+  achievements: {
+    getAll: () => Promise<Achievement[]>
+    unlock: (id: AchievementId) => Promise<Achievement>
+  }
+  float: {
+    show: () => Promise<void>
+    hide: () => Promise<void>
+    toggle: () => Promise<void>
+    focusMain: () => Promise<void>
+    exportPdf: () => Promise<string>
+  }
+  dialog: {
+    openDirectory: () => Promise<string | null>
+  }
+  events: {
+    onAchievementUnlocked: (cb: (achievement: Achievement) => void) => () => void
+    onPetStateUpdate: (cb: (state: PetStateWithProgress) => void) => () => void
+    onDistractionAlert: (cb: (data: { awaySeconds: number }) => void) => () => void
+    onFocusLost: (cb: () => void) => () => void
+    onFocusRegained: (cb: () => void) => () => void
   }
 }
 

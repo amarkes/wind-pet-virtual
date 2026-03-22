@@ -1,18 +1,24 @@
 import Store from 'electron-store'
 import { randomUUID } from 'crypto'
-import type { Task, Note, PetState, AppSettings } from '../../shared/types'
+import type { Task, Note, PetState, AppSettings, AuditLog, AuditAction, Subtask, FocusSession, DayFocusSummary, Achievement, AchievementId } from '../../shared/types'
 
 interface StoreSchema {
   tasks: Task[]
   notes: Note[]
   pet: PetState
   settings: AppSettings
+  auditLogs: AuditLog[]
+  focusSessions: FocusSession[]
+  achievements: Achievement[]
 }
 
 const store = new Store<StoreSchema>({
   defaults: {
     tasks: [],
     notes: [],
+    auditLogs: [],
+    focusSessions: [],
+    achievements: [],
     pet: {
       name: 'Buddy',
       mood: 'idle',
@@ -26,6 +32,8 @@ const store = new Store<StoreSchema>({
       pomodoroMinutes: 25,
       shortBreakMinutes: 5,
       longBreakMinutes: 15,
+      geminiApiKey: '',
+      workingDirectory: '',
     },
   },
 })
@@ -72,6 +80,57 @@ export function completeTask(id: string): Task | null {
     status: 'completed',
     completedAt: new Date().toISOString(),
   })
+}
+
+export function cancelTask(id: string): Task | null {
+  return updateTask(id, { status: 'cancelled' })
+}
+
+export function addSubtask(taskId: string, title: string): Task | null {
+  const tasks = getTasks()
+  const task = tasks.find((t) => t.id === taskId)
+  if (!task) return null
+  const subtask: Subtask = { id: randomUUID(), title, completed: false }
+  const subtasks = [...(task.subtasks ?? []), subtask]
+  return updateTask(taskId, { subtasks })
+}
+
+export function toggleSubtask(taskId: string, subtaskId: string): Task | null {
+  const tasks = getTasks()
+  const task = tasks.find((t) => t.id === taskId)
+  if (!task) return null
+  const subtasks = (task.subtasks ?? []).map((s) =>
+    s.id === subtaskId ? { ...s, completed: !s.completed } : s,
+  )
+  return updateTask(taskId, { subtasks })
+}
+
+export function removeSubtask(taskId: string, subtaskId: string): Task | null {
+  const tasks = getTasks()
+  const task = tasks.find((t) => t.id === taskId)
+  if (!task) return null
+  const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId)
+  return updateTask(taskId, { subtasks })
+}
+
+// ── Audit Logs ──────────────────────────────────────────────────────────────
+
+export function getAuditLogs(): AuditLog[] {
+  return store.get('auditLogs')
+}
+
+export function addAuditLog(taskId: string, taskTitle: string, action: AuditAction, details?: string): AuditLog {
+  const entry: AuditLog = {
+    id: randomUUID(),
+    taskId,
+    taskTitle,
+    action,
+    timestamp: new Date().toISOString(),
+    details,
+  }
+  const logs = store.get('auditLogs')
+  store.set('auditLogs', [entry, ...logs])
+  return entry
 }
 
 // ── Notes ──────────────────────────────────────────────────────────────────
@@ -135,4 +194,80 @@ export function updateSettings(data: Partial<AppSettings>): AppSettings {
   const updated = { ...settings, ...data }
   store.set('settings', updated)
   return updated
+}
+
+// ── Focus Sessions ──────────────────────────────────────────────────────────
+
+export function getFocusSessions(): FocusSession[] {
+  return store.get('focusSessions')
+}
+
+export function startFocusSession(): FocusSession {
+  const session: FocusSession = { id: randomUUID(), startedAt: new Date().toISOString() }
+  const sessions = store.get('focusSessions')
+  store.set('focusSessions', [session, ...sessions])
+  return session
+}
+
+export function endFocusSession(id: string): FocusSession | null {
+  const sessions = store.get('focusSessions')
+  const idx = sessions.findIndex((s) => s.id === id)
+  if (idx === -1) return null
+  const endedAt = new Date().toISOString()
+  const durationSeconds = Math.round(
+    (new Date(endedAt).getTime() - new Date(sessions[idx].startedAt).getTime()) / 1000,
+  )
+  sessions[idx] = { ...sessions[idx], endedAt, durationSeconds }
+  store.set('focusSessions', sessions)
+  return sessions[idx]
+}
+
+export function getFocusSummaries(days = 7): DayFocusSummary[] {
+  const sessions = store.get('focusSessions').filter((s) => s.durationSeconds !== undefined)
+  const result: Map<string, DayFocusSummary> = new Map()
+
+  const today = new Date()
+  for (let i = 0; i < days; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const key = d.toISOString().split('T')[0]
+    result.set(key, { date: key, totalFocusSeconds: 0, totalAwaySeconds: 0, sessions: 0 })
+  }
+
+  for (const s of sessions) {
+    const key = s.startedAt.split('T')[0]
+    const entry = result.get(key)
+    if (entry && s.durationSeconds !== undefined) {
+      entry.totalFocusSeconds += s.durationSeconds
+      entry.sessions += 1
+    }
+  }
+
+  return Array.from(result.values()).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// ── Achievements ────────────────────────────────────────────────────────────
+
+export function getAchievements(): Achievement[] {
+  return store.get('achievements')
+}
+
+export function unlockAchievement(id: AchievementId, meta: Omit<Achievement, 'id' | 'unlockedAt'>): Achievement {
+  const achievements = store.get('achievements')
+  const existing = achievements.find((a) => a.id === id)
+  if (existing?.unlockedAt) return existing  // already unlocked
+
+  const achievement: Achievement = { ...meta, id, unlockedAt: new Date().toISOString() }
+  if (existing) {
+    const idx = achievements.findIndex((a) => a.id === id)
+    achievements[idx] = achievement
+    store.set('achievements', achievements)
+  } else {
+    store.set('achievements', [...achievements, achievement])
+  }
+  return achievement
+}
+
+export function isAchievementUnlocked(id: AchievementId): boolean {
+  return store.get('achievements').some((a) => a.id === id && !!a.unlockedAt)
 }

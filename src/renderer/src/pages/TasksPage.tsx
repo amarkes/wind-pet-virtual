@@ -11,6 +11,7 @@ const FILTERS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'pending',    label: 'Pendentes' },
   { value: 'in_progress', label: 'Em andamento' },
   { value: 'completed',  label: 'Concluídas' },
+  { value: 'cancelled',  label: 'Canceladas' },
 ]
 
 export default function TasksPage() {
@@ -22,6 +23,7 @@ export default function TasksPage() {
     pending: tasks.filter((t) => t.status === 'pending').length,
     in_progress: tasks.filter((t) => t.status === 'in_progress').length,
     completed: tasks.filter((t) => t.status === 'completed').length,
+    cancelled: tasks.filter((t) => t.status === 'cancelled').length,
   }
 
   return (
@@ -47,7 +49,7 @@ export default function TasksPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {FILTERS.map(({ value, label }) => (
           <button
             key={value}

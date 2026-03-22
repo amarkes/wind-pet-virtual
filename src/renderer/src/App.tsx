@@ -6,18 +6,29 @@ import TasksPage from './pages/TasksPage'
 import NotesPage from './pages/NotesPage'
 import TimerPage from './pages/TimerPage'
 import SettingsPage from './pages/SettingsPage'
+import AuditPage from './pages/AuditPage'
+import CommitPage from './pages/CommitPage'
+import DailyReviewPage from './pages/DailyReviewPage'
+import FocusPage from './pages/FocusPage'
+import AchievementsPage from './pages/AchievementsPage'
+import AchievementToast from './components/AchievementToast'
 import { usePetStore } from './stores/pet.store'
 import { useTasksStore } from './stores/tasks.store'
 import { useNotesStore } from './stores/notes.store'
 
-type Page = 'dashboard' | 'tasks' | 'notes' | 'timer' | 'settings'
+type Page = 'dashboard' | 'tasks' | 'notes' | 'timer' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
 const PAGES: Record<Page, JSX.Element> = {
-  dashboard: <Dashboard />,
-  tasks:     <TasksPage />,
-  notes:     <NotesPage />,
-  timer:     <TimerPage />,
-  settings:  <SettingsPage />,
+  dashboard:    <Dashboard />,
+  tasks:        <TasksPage />,
+  notes:        <NotesPage />,
+  timer:        <TimerPage />,
+  settings:     <SettingsPage />,
+  audit:        <AuditPage />,
+  commits:      <CommitPage />,
+  review:       <DailyReviewPage />,
+  focus:        <FocusPage />,
+  achievements: <AchievementsPage />,
 }
 
 export default function App() {
@@ -34,6 +45,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg-base">
+      <AchievementToast />
       <Sidebar current={page} onChange={setPage} />
 
       <main className={`flex-1 overflow-y-auto ${isNotes ? '' : 'p-6'}`}>

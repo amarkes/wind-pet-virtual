@@ -2,9 +2,10 @@ import { AnimatePresence } from 'framer-motion'
 import { CheckSquare } from 'lucide-react'
 import { useTasksStore } from '../../stores/tasks.store'
 import TaskItem from './TaskItem'
+import type { Task } from '../../../../shared/types'
 
 export default function TaskList() {
-  const { complete, remove, getFiltered } = useTasksStore()
+  const { complete, remove, cancel, update, getFiltered } = useTasksStore()
   const tasks = getFiltered()
 
   if (tasks.length === 0) {
@@ -26,6 +27,8 @@ export default function TaskList() {
             task={task}
             onComplete={complete}
             onDelete={remove}
+            onCancel={cancel}
+            onEdit={(id: string, data: Partial<Task>) => update(id, data)}
           />
         ))}
       </AnimatePresence>

@@ -12,6 +12,10 @@ interface TasksStore {
   update: (id: string, data: Partial<Task>) => Promise<void>
   remove: (id: string) => Promise<void>
   complete: (id: string) => Promise<void>
+  cancel: (id: string) => Promise<void>
+  addSubtask: (taskId: string, title: string) => Promise<void>
+  toggleSubtask: (taskId: string, subtaskId: string) => Promise<void>
+  removeSubtask: (taskId: string, subtaskId: string) => Promise<void>
   setFilter: (filter: TaskStatus | 'all') => void
 
   getFiltered: () => Task[]
@@ -78,6 +82,35 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
       epic: 'MISSÃO ÉPICA COMPLETA! 👑🎉',
     }
     pet.setMessage(messages[completed.difficulty] ?? 'Feito!')
+  },
+
+  cancel: async (id) => {
+    const cancelled = await window.api.tasks.cancel(id)
+    if (!cancelled) return
+    set((s) => ({
+      tasks: s.tasks.map((t) => (t.id === id ? cancelled : t)),
+    }))
+    const pet = usePetStore.getState()
+    pet.triggerMoodTemporary('sad', 2000)
+    pet.setMessage('Missão cancelada... 😔')
+  },
+
+  addSubtask: async (taskId, title) => {
+    const updated = await window.api.tasks.addSubtask(taskId, title)
+    if (!updated) return
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)) }))
+  },
+
+  toggleSubtask: async (taskId, subtaskId) => {
+    const updated = await window.api.tasks.toggleSubtask(taskId, subtaskId)
+    if (!updated) return
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)) }))
+  },
+
+  removeSubtask: async (taskId, subtaskId) => {
+    const updated = await window.api.tasks.removeSubtask(taskId, subtaskId)
+    if (!updated) return
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)) }))
   },
 
   setFilter: (filter) => set({ filter }),

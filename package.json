@@ -10,9 +10,11 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@google/genai": "^1.46.0",
     "electron-store": "^8.2.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.344.0",
+    "simple-git": "^3.33.0",
     "zustand": "^4.5.2"
   },
   "devDependencies": {
