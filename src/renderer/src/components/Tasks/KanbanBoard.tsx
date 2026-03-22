@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core'
 import { useDroppable, useDraggable } from '@dnd-kit/core'
 import {
-  CalendarClock, Clock, Tag, GripVertical,
+  CalendarClock, Clock, GripVertical,
   ChevronDown, ChevronUp, Pencil, Trash2, XCircle,
   CheckSquare, Square, X, Sparkles, Loader2, AlertTriangle,
 } from 'lucide-react'
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTasksStore } from '../../stores/tasks.store'
 import { useAIStore } from '../../stores/ai.store'
 import TaskEditModal from './TaskEditModal'
+import TagChip from '../ui/TagChip'
 import type { Task, TaskStatus, Subtask } from '../../../../shared/types'
 
 // ── Column config ──────────────────────────────────────────────────────────
@@ -264,12 +265,9 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
       {/* ── Tags ── */}
       {task.tags && task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 px-3 pb-3 items-center select-none">
-          <Tag size={9} className="text-text-muted" />
+        <div className="flex flex-wrap gap-1 px-3 pb-3">
           {task.tags.map((tag) => (
-            <span key={tag} className="text-[10px] px-1 py-0.5 rounded bg-bg-border/50 text-text-muted border border-bg-border/60">
-              {tag}
-            </span>
+            <TagChip key={tag} tag={tag} size="xs" />
           ))}
         </div>
       )}

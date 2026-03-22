@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { WindowApi, Achievement, PetStateWithProgress } from '../shared/types'
 
-const api: WindowApi = {
+const api: Omit<WindowApi, 'platform'> = {
   tasks: {
     getAll:        ()                          => ipcRenderer.invoke('tasks:getAll'),
     create:        (data)                      => ipcRenderer.invoke('tasks:create', data),
@@ -31,6 +31,10 @@ const api: WindowApi = {
   },
   audit: {
     getAll: () => ipcRenderer.invoke('audit:getAll'),
+  },
+  tagColors: {
+    get:  ()        => ipcRenderer.invoke('tagColors:get'),
+    set:  (colors)  => ipcRenderer.invoke('tagColors:set', colors),
   },
   ai: {
     suggestTask:       (title)               => ipcRenderer.invoke('ai:suggestTask', title),

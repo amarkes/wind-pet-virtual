@@ -208,6 +208,10 @@ export interface WindowApi {
   audit: {
     getAll: () => Promise<AuditLog[]>
   }
+  tagColors: {
+    get: () => Promise<Record<string, string>>
+    set: (colors: Record<string, string>) => Promise<Record<string, string>>
+  }
   ai: {
     suggestTask: (title: string, description?: string) => Promise<AISuggestion>
     breakIntoSubtasks: (taskTitle: string, taskDescription?: string) => Promise<string[]>

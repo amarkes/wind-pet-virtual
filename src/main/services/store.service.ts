@@ -10,6 +10,7 @@ interface StoreSchema {
   auditLogs: AuditLog[]
   focusSessions: FocusSession[]
   achievements: Achievement[]
+  tagColors: Record<string, string>
 }
 
 const store = new Store<StoreSchema>({
@@ -19,6 +20,7 @@ const store = new Store<StoreSchema>({
     auditLogs: [],
     focusSessions: [],
     achievements: [],
+    tagColors: {},
     pet: {
       name: 'Buddy',
       mood: 'idle',
@@ -112,6 +114,17 @@ export function removeSubtask(taskId: string, subtaskId: string): Task | null {
   if (!task) return null
   const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId)
   return updateTask(taskId, { subtasks })
+}
+
+// ── Tag Colors ─────────────────────────────────────────────────────────────
+
+export function getTagColors(): Record<string, string> {
+  return store.get('tagColors')
+}
+
+export function setTagColors(colors: Record<string, string>): Record<string, string> {
+  store.set('tagColors', colors)
+  return colors
 }
 
 // ── Audit Logs ──────────────────────────────────────────────────────────────

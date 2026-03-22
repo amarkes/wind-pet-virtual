@@ -35,6 +35,7 @@ const store = new Store({
     auditLogs: [],
     focusSessions: [],
     achievements: [],
+    tagColors: {},
     pet: {
       name: "Buddy",
       mood: "idle",
@@ -116,6 +117,13 @@ function removeSubtask(taskId, subtaskId) {
   if (!task) return null;
   const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId);
   return updateTask(taskId, { subtasks });
+}
+function getTagColors() {
+  return store.get("tagColors");
+}
+function setTagColors(colors) {
+  store.set("tagColors", colors);
+  return colors;
 }
 function getAuditLogs() {
   return store.get("auditLogs");
@@ -519,6 +527,8 @@ function registerTasksIpc() {
   electron.ipcMain.handle("tasks:removeSubtask", (_, taskId, subtaskId) => {
     return removeSubtask(taskId, subtaskId);
   });
+  electron.ipcMain.handle("tagColors:get", () => getTagColors());
+  electron.ipcMain.handle("tagColors:set", (_, colors) => setTagColors(colors));
 }
 function registerNotesIpc() {
   electron.ipcMain.handle("notes:getAll", () => {

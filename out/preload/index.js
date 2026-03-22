@@ -31,6 +31,10 @@ const api = {
   audit: {
     getAll: () => electron.ipcRenderer.invoke("audit:getAll")
   },
+  tagColors: {
+    get: () => electron.ipcRenderer.invoke("tagColors:get"),
+    set: (colors) => electron.ipcRenderer.invoke("tagColors:set", colors)
+  },
   ai: {
     suggestTask: (title) => electron.ipcRenderer.invoke("ai:suggestTask", title),
     breakIntoSubtasks: (title, description) => electron.ipcRenderer.invoke("ai:breakIntoSubtasks", title, description),

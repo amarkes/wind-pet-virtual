@@ -3,6 +3,7 @@ import { X, Tag } from 'lucide-react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
+import TagChip from '../ui/TagChip'
 import type { Task, TaskPriority, TaskDifficulty } from '../../../../shared/types'
 
 function todayYMD() {
@@ -155,20 +156,12 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
           onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement)?.focus()}
         >
           {tags.map((tag) => (
-            <span
+            <TagChip
               key={tag}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md
-                         bg-primary/15 text-primary-light text-[11px] font-medium"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
-                className="hover:text-primary"
-              >
-                <X size={9} />
-              </button>
-            </span>
+              tag={tag}
+              editable
+              onRemove={() => setTags((prev) => prev.filter((t) => t !== tag))}
+            />
           ))}
           <input
             value={tagInput}

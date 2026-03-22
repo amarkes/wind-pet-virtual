@@ -15,6 +15,7 @@ import AchievementToast from './components/AchievementToast'
 import { usePetStore } from './stores/pet.store'
 import { useTasksStore } from './stores/tasks.store'
 import { useNotesStore } from './stores/notes.store'
+import { useTagColorsStore } from './stores/tagColors.store'
 
 type Page = 'dashboard' | 'tasks' | 'notes' | 'timer' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
@@ -33,12 +34,13 @@ const PAGES: Record<Page, JSX.Element> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>('dashboard')
-  const { load: loadPet } = usePetStore()
-  const { load: loadTasks } = useTasksStore()
-  const { load: loadNotes } = useNotesStore()
+  const { load: loadPet }        = usePetStore()
+  const { load: loadTasks }      = useTasksStore()
+  const { load: loadNotes }      = useNotesStore()
+  const { load: loadTagColors }  = useTagColorsStore()
 
   useEffect(() => {
-    Promise.all([loadPet(), loadTasks(), loadNotes()])
+    Promise.all([loadPet(), loadTasks(), loadNotes(), loadTagColors()])
   }, [])
 
   const isNotes = page === 'notes'

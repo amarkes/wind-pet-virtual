@@ -2,11 +2,12 @@ import { useState } from 'react'
 import {
   Check, Trash2, ChevronDown, ChevronUp, Clock,
   Pencil, XCircle, Sparkles, Loader2, CheckSquare, Square, X,
-  CalendarClock, Tag,
+  CalendarClock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task, Subtask } from '../../../../shared/types'
 import TaskEditModal from './TaskEditModal'
+import TagChip from '../ui/TagChip'
 import { useAIStore } from '../../stores/ai.store'
 import { useTasksStore } from '../../stores/tasks.store'
 
@@ -159,15 +160,8 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
           {/* Tags */}
           {task.tags && task.tags.length > 0 && (
             <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-              <Tag size={10} className="text-text-muted flex-shrink-0" />
               {task.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-1.5 py-0.5 rounded-md bg-bg-border/50 text-text-muted
-                             border border-bg-border/60 font-medium"
-                >
-                  {tag}
-                </span>
+                <TagChip key={tag} tag={tag} size="xs" />
               ))}
             </div>
           )}
