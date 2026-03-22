@@ -3,7 +3,6 @@ import { BarChart2, Loader2, Sparkles, AlertCircle, CheckCircle, Clock, Trending
 import { useAIStore } from '../stores/ai.store'
 import { usePetStore } from '../stores/pet.store'
 import Button from '../components/ui/Button'
-import type { DailyReview } from '../../../shared/types'
 
 function ScoreRing({ score }: { score: number }) {
   const color =
@@ -35,16 +34,14 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export default function DailyReviewPage() {
-  const [review, setReview]         = useState<DailyReview | null>(null)
-  const [exporting, setExporting]   = useState(false)
-  const { dailyReview, isLoading, error, clearError } = useAIStore()
+  const [exporting, setExporting] = useState(false)
+  const { dailyReview, isLoading, error, clearError, lastDailyReview: review, lastDailyReviewAt: reviewedAt } = useAIStore()
   const { setMessage, triggerMoodTemporary } = usePetStore()
 
   async function handleGenerate() {
     clearError()
     const result = await dailyReview()
     if (result) {
-      setReview(result)
       triggerMoodTemporary(result.petMood, 6000)
       setMessage(result.petMessage)
     }
@@ -71,6 +68,15 @@ export default function DailyReviewPage() {
           <div>
             <h1 className="text-xl font-bold text-text-primary">Review Diário</h1>
             <p className="text-xs text-text-muted capitalize">{today}</p>
+            {reviewedAt && (
+              <p className="text-[10px] text-text-muted">
+                Gerado em{' '}
+                {new Date(reviewedAt).toLocaleDateString('pt-BR', {
+                  day: '2-digit', month: '2-digit', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

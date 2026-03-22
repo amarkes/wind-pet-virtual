@@ -1,13 +1,27 @@
 import { create } from 'zustand'
 import type { AISuggestion, CommitAnalysis, DailyReview } from '../../../shared/types'
 
+const COMMIT_STORAGE_KEY = 'lastCommitAnalysis'
+const REVIEW_STORAGE_KEY = 'lastDailyReview'
+
+function loadPersisted<T>(key: string): { result: T; analyzedAt: string } | null {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 interface AIStore {
   isLoading: boolean
   error: string | null
 
   lastSuggestion: AISuggestion | null
   lastCommitAnalysis: CommitAnalysis | null
+  lastCommitAnalysisAt: string | null
   lastDailyReview: DailyReview | null
+  lastDailyReviewAt: string | null
 
   suggestTask: (title: string, description?: string) => Promise<AISuggestion | null>
   breakIntoSubtasks: (title: string, description?: string) => Promise<string[]>
@@ -18,12 +32,17 @@ interface AIStore {
   clearError: () => void
 }
 
+const _persistedCommit  = loadPersisted<CommitAnalysis>(COMMIT_STORAGE_KEY)
+const _persistedReview  = loadPersisted<DailyReview>(REVIEW_STORAGE_KEY)
+
 export const useAIStore = create<AIStore>((set) => ({
   isLoading: false,
   error: null,
   lastSuggestion: null,
-  lastCommitAnalysis: null,
-  lastDailyReview: null,
+  lastCommitAnalysis: _persistedCommit?.result ?? null,
+  lastCommitAnalysisAt: _persistedCommit?.analyzedAt ?? null,
+  lastDailyReview: _persistedReview?.result ?? null,
+  lastDailyReviewAt: _persistedReview?.analyzedAt ?? null,
 
   suggestTask: async (title, description) => {
     set({ isLoading: true, error: null })
@@ -53,7 +72,11 @@ export const useAIStore = create<AIStore>((set) => ({
     set({ isLoading: true, error: null })
     try {
       const analysis = await window.api.ai.analyzeCommits(repoPath, limit)
-      set({ isLoading: false, lastCommitAnalysis: analysis })
+      const analyzedAt = new Date().toISOString()
+      set({ isLoading: false, lastCommitAnalysis: analysis, lastCommitAnalysisAt: analyzedAt })
+      try {
+        localStorage.setItem(COMMIT_STORAGE_KEY, JSON.stringify({ result: analysis, analyzedAt }))
+      } catch { /* ignore */ }
       return analysis
     } catch (e) {
       set({ isLoading: false, error: (e as Error).message })
@@ -65,7 +88,11 @@ export const useAIStore = create<AIStore>((set) => ({
     set({ isLoading: true, error: null })
     try {
       const review = await window.api.ai.dailyReview()
-      set({ isLoading: false, lastDailyReview: review })
+      const analyzedAt = new Date().toISOString()
+      set({ isLoading: false, lastDailyReview: review, lastDailyReviewAt: analyzedAt })
+      try {
+        localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify({ result: review, analyzedAt }))
+      } catch { /* ignore */ }
       return review
     } catch (e) {
       set({ isLoading: false, error: (e as Error).message })

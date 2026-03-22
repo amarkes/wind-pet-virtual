@@ -27,8 +27,8 @@ export default function Sidebar({ current, onChange }: Props) {
 
   return (
     <aside className="w-52 flex-shrink-0 bg-bg-base border-r border-bg-border flex flex-col h-full">
-      {/* Pet area */}
-      <div className="border-b border-bg-border">
+      {/* Pet area — fixed height so animations never push the nav */}
+      <div className="h-[280px] flex-shrink-0 border-b border-bg-border overflow-hidden">
         <Pet />
       </div>
 

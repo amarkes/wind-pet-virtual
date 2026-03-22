@@ -6,7 +6,7 @@ import {
 import { useAIStore } from '../stores/ai.store'
 import { usePetStore } from '../stores/pet.store'
 import Button from '../components/ui/Button'
-import type { CommitAnalysis, CommitInfo } from '../../../shared/types'
+import type { CommitInfo } from '../../../shared/types'
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -112,20 +112,11 @@ function CommitCard({ commit }: { commit: CommitInfo }) {
   )
 }
 
-const STORAGE_KEY = 'lastCommitAnalysis'
-
-interface PersistedAnalysis {
-  result: CommitAnalysis
-  analyzedAt: string
-}
-
 export default function CommitPage() {
-  const [repoPath, setRepoPath]   = useState('')
-  const [limit, setLimit]         = useState(1)
-  const [result, setResult]       = useState<CommitAnalysis | null>(null)
-  const [analyzedAt, setAnalyzedAt] = useState<string | null>(null)
+  const [repoPath, setRepoPath] = useState('')
+  const [limit, setLimit]       = useState(1)
 
-  const { analyzeCommits, isLoading, error, clearError } = useAIStore()
+  const { analyzeCommits, isLoading, error, clearError, lastCommitAnalysis: result, lastCommitAnalysisAt: analyzedAt } = useAIStore()
   const { setMessage, triggerMoodTemporary, updateWeight } = usePetStore()
 
   useEffect(() => {
@@ -133,16 +124,6 @@ export default function CommitPage() {
       if (s.workingDirectory) setRepoPath(s.workingDirectory)
       if (s.commitAnalysisLimit) setLimit(s.commitAnalysisLimit)
     })
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed: PersistedAnalysis = JSON.parse(saved)
-        setResult(parsed.result)
-        setAnalyzedAt(parsed.analyzedAt)
-      }
-    } catch {
-      // ignore corrupted data
-    }
   }, [])
 
   async function handleAnalyze() {
@@ -150,10 +131,6 @@ export default function CommitPage() {
     clearError()
     const analysis = await analyzeCommits(repoPath.trim(), limit)
     if (analysis) {
-      const now = new Date().toISOString()
-      setResult(analysis)
-      setAnalyzedAt(now)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ result: analysis, analyzedAt: now }))
       triggerMoodTemporary(analysis.petMood, 5000)
       setMessage(analysis.petMessage)
       updateWeight(analysis.score)
