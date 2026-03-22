@@ -26,7 +26,7 @@ const SORT_OPTIONS: { value: TaskSort; label: string }[] = [
 export default function TasksPage() {
   const { create, filter, setFilter, search, setSearch, sort, setSort, tasks } = useTasksStore()
   const [showForm, setShowForm] = useState(false)
-  const [view, setView] = useState<ViewMode>('list')
+  const [view, setView] = useState<ViewMode>('kanban')
 
   const counts: Record<string, number> = {
     all:         tasks.length,
