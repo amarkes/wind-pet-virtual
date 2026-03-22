@@ -2,7 +2,13 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { X, Tag } from 'lucide-react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
+import DatePicker from '../ui/DatePicker'
 import type { Task, TaskPriority, TaskDifficulty } from '../../../../shared/types'
+
+function todayYMD() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 interface Props {
   task: Task
@@ -16,7 +22,7 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
   const [priority, setPriority]       = useState<TaskPriority>(task.priority)
   const [difficulty, setDifficulty]   = useState<TaskDifficulty>(task.difficulty)
   const [estimated, setEstimated]     = useState(task.estimatedMinutes?.toString() ?? '')
-  const [dueDate, setDueDate]         = useState(task.dueDate ?? '')
+  const [dueDate, setDueDate]         = useState(task.dueDate ?? todayYMD())
   const [tags, setTags]               = useState<string[]>(task.tags ?? [])
   const [tagInput, setTagInput]       = useState('')
   const [loading, setLoading]         = useState(false)
@@ -118,11 +124,10 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
           onChange={(e) => setEstimated(e.target.value)}
           min="1"
         />
-        <Input
+        <DatePicker
           label="Vencimento"
-          type="date"
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={setDueDate}
         />
       </div>
 
