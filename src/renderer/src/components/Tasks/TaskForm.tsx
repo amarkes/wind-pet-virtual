@@ -161,7 +161,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
           {suggestion.improvedDescription && (
             <div className="flex items-start gap-2 bg-bg-card rounded-lg p-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-text-muted font-medium mb-0.5">Descrição sugerida</p>
+                <p className="text-[10px] text-text-muted font-medium mb-0.5">Prompt sugerido ✦</p>
                 <p className="text-xs text-text-secondary leading-snug">{suggestion.improvedDescription}</p>
               </div>
               <button

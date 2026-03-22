@@ -37,7 +37,7 @@ Analise o título e a descrição fornecidos e retorne um JSON com:
 - estimatedMinutes: número inteiro positivo
 - reasoning: breve explicação da dificuldade em português (max 1 frase)
 - improvedTitle: título melhorado — mais claro, acionável e específico (em português)
-- improvedDescription: descrição melhorada e detalhada (max 2 frases em português); se não houver descrição original, crie uma relevante
+- improvedDescription: prompt de desenvolvimento pronto para colar em ferramentas de IA (Cursor, Claude, ChatGPT) — deve ser imperativo ("Implemente...", "Corrija...", "Crie..."), incluir contexto técnico inferido do título, e terminar com critérios de aceite objetivos; máximo 3 frases em português; não use markdown
 - suggestedTags: array de 2 a 4 tags em minúsculas (exemplos: "bug", "frontend", "backend", "docs", "reunião", "refactor", "fix", "feature", "ux", "teste")
 
 Responda apenas com JSON válido, sem markdown.`,
