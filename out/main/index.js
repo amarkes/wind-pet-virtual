@@ -612,14 +612,18 @@ Descrição: ${taskDescription}` : ""}`
 async function analyzeCommits(apiKey, repoPath, limit = 10) {
   const git = simpleGit(repoPath);
   const log = await git.log({ maxCount: limit });
-  const commits = await Promise.all(
+  const MAX_DIFF_CHARS = 3500;
+  const commitsWithDiff = await Promise.all(
     log.all.map(async (c) => {
       let additions = 0;
       let deletions = 0;
+      let rawDiff = "";
       try {
-        const diff = await git.diffSummary([`${c.hash}^`, c.hash]);
-        additions = diff.insertions;
-        deletions = diff.deletions;
+        const summary = await git.diffSummary([`${c.hash}^`, c.hash]);
+        additions = summary.insertions;
+        deletions = summary.deletions;
+        const full = await git.diff([`${c.hash}^`, c.hash]);
+        rawDiff = full.length > MAX_DIFF_CHARS ? full.slice(0, MAX_DIFF_CHARS) + "\n... (diff truncado)" : full;
       } catch {
       }
       return {
@@ -628,28 +632,56 @@ async function analyzeCommits(apiKey, repoPath, limit = 10) {
         author: c.author_name,
         date: c.date,
         additions,
-        deletions
+        deletions,
+        rawDiff
       };
     })
   );
-  const commitsText = commits.map((c) => `- ${c.hash} "${c.message}" (+${c.additions}/-${c.deletions} linhas)`).join("\n");
+  const commitsText = commitsWithDiff.map(
+    (c) => `## Commit ${c.hash}: "${c.message}" (+${c.additions}/-${c.deletions})
+${c.rawDiff || "(sem diff disponível)"}`
+  ).join("\n\n---\n\n");
   const text = await generate(
     apiKey,
-    `Você é um mentor de engenharia de software analisando commits de um desenvolvedor.
-Avalie a qualidade dos commits e dê feedback construtivo em português.
+    `Você é um engenheiro de software sênior fazendo code review de commits.
+Analise as mudanças reais de código (diffs), avaliando:
+- Qualidade e clareza do código
+- Boas práticas e padrões (SOLID, DRY, etc.)
+- Possíveis bugs ou problemas de lógica
+- Segurança (injeção, exposição de dados, etc.)
+- Legibilidade e manutenibilidade
+- Qualidade da mensagem do commit
+
 Responda apenas com JSON válido sem markdown:
 {
-  "feedback": "texto de análise geral (2-3 parágrafos)",
+  "feedback": "análise geral do código em 2-3 parágrafos",
   "score": número 0-100,
-  "tips": ["dica 1", "dica 2", ...],
+  "tips": ["sugestão prática 1", "sugestão prática 2"],
+  "commitReviews": {
+    "HASH_7_CHARS": {
+      "issues": ["problema encontrado no código"],
+      "suggestions": ["melhoria sugerida"],
+      "rating": "good" | "ok" | "needs_work"
+    }
+  },
   "petMood": "idle" | "happy" | "excited" | "tired" | "sad",
   "petMessage": "mensagem curta e animada do pet (1 frase)"
 }`,
-    `Analise estes ${commits.length} commits recentes:
+    `Faça code review destes ${commitsWithDiff.length} commits:
+
 ${commitsText}`
   );
   const parsed = JSON.parse(text);
-  return { ...parsed, commits };
+  const commits = commitsWithDiff.map((c) => {
+    const raw = parsed.commitReviews?.[c.hash];
+    const review = raw ? {
+      issues: raw.issues ?? [],
+      suggestions: raw.suggestions ?? [],
+      rating: raw.rating ?? "ok"
+    } : void 0;
+    return { hash: c.hash, message: c.message, author: c.author, date: c.date, additions: c.additions, deletions: c.deletions, review };
+  });
+  return { feedback: parsed.feedback, score: parsed.score, tips: parsed.tips, petMood: parsed.petMood, petMessage: parsed.petMessage, commits };
 }
 async function dailyReview(apiKey, tasks) {
   const today = (/* @__PURE__ */ new Date()).toDateString();
