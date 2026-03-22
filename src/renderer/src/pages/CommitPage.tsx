@@ -75,7 +75,7 @@ function CommitCard({ commit }: { commit: CommitInfo }) {
 
       {/* Expandable review */}
       {expanded && hasReview && (
-        <div className="border-t border-bg-border/60 px-3 py-3 flex flex-col gap-3 bg-bg-secondary/30">
+        <div className="border-t border-bg-border/60 px-3 py-3 flex flex-col gap-3 bg-bg-secondary/30 select-text cursor-text">
           {commit.review!.issues.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <span className="text-[10px] font-semibold text-accent-red uppercase tracking-wide flex items-center gap-1">
