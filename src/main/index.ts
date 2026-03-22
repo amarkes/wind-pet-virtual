@@ -12,8 +12,8 @@ let floatWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 700,
+    width: 1280,
+    height: 900,
     minWidth: 880,
     minHeight: 580,
     backgroundColor: '#0F0F1A',

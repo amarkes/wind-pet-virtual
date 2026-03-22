@@ -868,8 +868,8 @@ let mainWindow = null;
 let floatWindow = null;
 function createWindow() {
   mainWindow = new electron.BrowserWindow({
-    width: 1100,
-    height: 700,
+    width: 1280,
+    height: 900,
     minWidth: 880,
     minHeight: 580,
     backgroundColor: "#0F0F1A",

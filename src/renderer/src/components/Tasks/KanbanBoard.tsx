@@ -387,6 +387,7 @@ function applyColumnFilters(
   if (dueDate !== 'all') {
     const now   = new Date()
     const today = new Date(); today.setHours(0, 0, 0, 0)
+    // Start of the 8th day from today — tasks due within 7 days satisfy `due < nextWeek`
     const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 8)
     result = result.filter((t) => {
       if (!t.dueDate) return false
@@ -401,6 +402,20 @@ function applyColumnFilters(
   }
 
   return result
+}
+
+const SELECT_BASE = 'flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none'
+const SELECT_INACTIVE = 'border-bg-border text-text-muted hover:border-bg-border/80'
+
+function prioritySelectCls(active: boolean) {
+  return `${SELECT_BASE} ${active ? 'border-primary/40 text-primary-light bg-primary/10' : SELECT_INACTIVE}`
+}
+
+function dueDateSelectCls(value: ColDueDateFilter) {
+  if (value === 'all')     return `${SELECT_BASE} ${SELECT_INACTIVE}`
+  if (value === 'overdue') return `${SELECT_BASE} border-red-500/40 text-red-400 bg-red-500/10`
+  if (value === 'today')   return `${SELECT_BASE} border-amber-500/40 text-amber-400 bg-amber-500/10`
+  return `${SELECT_BASE} border-primary/40 text-primary-light bg-primary/10`
 }
 
 function KanbanColumn({ column, tasks }: {
@@ -432,11 +447,7 @@ function KanbanColumn({ column, tasks }: {
         <select
           value={colPriority}
           onChange={(e) => setColPriority(e.target.value as ColPriorityFilter)}
-          className={`flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none
-            ${colPriority !== 'all'
-              ? 'border-primary/40 text-primary-light bg-primary/10'
-              : 'border-bg-border text-text-muted hover:border-bg-border/80'
-            }`}
+          className={prioritySelectCls(colPriority !== 'all')}
         >
           <option value="all">Prioridade</option>
           <option value="low">Baixa</option>
@@ -448,15 +459,7 @@ function KanbanColumn({ column, tasks }: {
         <select
           value={colDueDate}
           onChange={(e) => setColDueDate(e.target.value as ColDueDateFilter)}
-          className={`flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none
-            ${colDueDate !== 'all'
-              ? colDueDate === 'overdue'
-                ? 'border-red-500/40 text-red-400 bg-red-500/10'
-                : colDueDate === 'today'
-                  ? 'border-amber-500/40 text-amber-400 bg-amber-500/10'
-                  : 'border-primary/40 text-primary-light bg-primary/10'
-              : 'border-bg-border text-text-muted hover:border-bg-border/80'
-            }`}
+          className={dueDateSelectCls(colDueDate)}
         >
           <option value="all">Vencimento</option>
           <option value="overdue">Vencidas</option>
