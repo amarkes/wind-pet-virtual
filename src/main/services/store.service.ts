@@ -28,6 +28,7 @@ const store = new Store<StoreSchema>({
       level: 1,
       streak: 0,
       lastActive: new Date().toISOString(),
+      weight: 1.0,
     },
     settings: {
       userName: '',
@@ -192,6 +193,15 @@ export function updatePetState(data: Partial<PetState>): PetState {
   const updated = { ...pet, ...data }
   store.set('pet', updated)
   return updated
+}
+
+// score < 70 → pet gets fatter; score >= 70 → pet gets thinner
+export function updatePetWeight(score: number): PetState {
+  const pet = store.get('pet')
+  const current = pet.weight ?? 1.0
+  const delta   = score >= 70 ? -0.04 : +0.06
+  const weight  = Math.min(1.4, Math.max(0.75, current + delta))
+  return updatePetState({ weight })
 }
 
 // ── Settings ───────────────────────────────────────────────────────────────

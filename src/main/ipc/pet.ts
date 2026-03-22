@@ -3,6 +3,7 @@ import * as store from '../services/store.service'
 import { addXP, updateStreak, setMood, xpToNextLevel } from '../services/pet.service'
 import type { PetState } from '../../shared/types'
 
+
 export function registerPetIpc(): void {
   ipcMain.handle('pet:getState', () => {
     const pet = store.getPetState()
@@ -20,6 +21,10 @@ export function registerPetIpc(): void {
 
   ipcMain.handle('pet:setMood', (_, mood: PetState['mood']) => {
     return setMood(mood)
+  })
+
+  ipcMain.handle('pet:updateWeight', (_, score: number) => {
+    return store.updatePetWeight(score)
   })
 
   ipcMain.handle('settings:get', () => {

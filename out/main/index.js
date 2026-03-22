@@ -42,13 +42,11 @@ const store = new Store({
       xp: 0,
       level: 1,
       streak: 0,
-      lastActive: (/* @__PURE__ */ new Date()).toISOString()
+      lastActive: (/* @__PURE__ */ new Date()).toISOString(),
+      weight: 1
     },
     settings: {
       userName: "",
-      pomodoroMinutes: 25,
-      shortBreakMinutes: 5,
-      longBreakMinutes: 15,
       geminiApiKey: "",
       workingDirectory: "",
       commitAnalysisLimit: 1
@@ -179,6 +177,13 @@ function updatePetState(data) {
   const updated = { ...pet, ...data };
   store.set("pet", updated);
   return updated;
+}
+function updatePetWeight(score) {
+  const pet = store.get("pet");
+  const current = pet.weight ?? 1;
+  const delta = score >= 70 ? -0.04 : 0.06;
+  const weight = Math.min(1.4, Math.max(0.75, current + delta));
+  return updatePetState({ weight });
 }
 function getSettings() {
   return store.get("settings");
@@ -561,6 +566,9 @@ function registerPetIpc() {
   electron.ipcMain.handle("pet:setMood", (_, mood) => {
     return setMood(mood);
   });
+  electron.ipcMain.handle("pet:updateWeight", (_, score) => {
+    return updatePetWeight(score);
+  });
   electron.ipcMain.handle("settings:get", () => {
     return getSettings();
   });
@@ -725,9 +733,37 @@ ${tasksSummary}`
     ...parsed,
     tasksCompleted: completed.length,
     tasksCreated: todayTasks.length,
-    tasksOverdue: overdue.length,
-    pomodoroSessions: 0
+    tasksOverdue: overdue.length
   };
+}
+async function buddySpeak(apiKey, ctx) {
+  const period = ctx.hour < 12 ? "manhã" : ctx.hour < 18 ? "tarde" : "noite";
+  const activityParts = [];
+  if (ctx.completedToday > 0) activityParts.push(`${ctx.completedToday} tarefa(s) concluída(s) hoje`);
+  if (ctx.inProgressCount > 0) activityParts.push(`${ctx.inProgressCount} em andamento`);
+  if (ctx.overdueCount > 0) activityParts.push(`${ctx.overdueCount} atrasada(s)`);
+  if (ctx.pendingCount > 0) activityParts.push(`${ctx.pendingCount} pendente(s)`);
+  const activity = activityParts.length > 0 ? activityParts.join(", ") : "sem tarefas registradas";
+  return generate(
+    apiKey,
+    `Você é ${ctx.name}, um pet virtual fofo de um desenvolvedor. Personalidade: carinhosa, espontânea, às vezes engraçada, nunca robótica.
+
+Contexto real do usuário agora:
+- Humor atual: ${ctx.mood}
+- Nível: ${ctx.level}, streak: ${ctx.streak} dias, período: ${period}
+- Atividade de hoje: ${activity}
+
+Regras:
+1. Comente DIRETAMENTE sobre o que o usuário fez ou precisa fazer — nunca fale de forma genérica.
+2. Se concluiu muitas tarefas: celebre com entusiasmo específico.
+3. Se tem tarefas atrasadas: mencione de forma gentil, motivadora.
+4. Se está em andamento: incentive a finalizar.
+5. Se não fez nada ainda: motive sem cobrar.
+6. Máximo 12 palavras em português brasileiro.
+7. Seja natural, varie o tom — evite sempre começar igual.
+8. Responda APENAS com a frase, sem aspas.`,
+    `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`
+  );
 }
 async function noteToTasks(apiKey, content) {
   const text = await generate(
@@ -795,6 +831,11 @@ function registerAiIpc() {
   electron.ipcMain.handle("ai:summarizeNote", async (_, content) => {
     const apiKey = getApiKey();
     return summarizeNote(apiKey, content);
+  });
+  electron.ipcMain.handle("ai:buddySpeak", async (_, ctx) => {
+    const settings = getSettings();
+    if (!settings.geminiApiKey) return null;
+    return buddySpeak(settings.geminiApiKey, ctx);
   });
 }
 let activeSessionId = null;
@@ -886,6 +927,7 @@ function createWindow() {
     minWidth: 880,
     minHeight: 580,
     backgroundColor: "#0F0F1A",
+    title: "Buddy",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: process.platform === "darwin" ? { x: 12, y: 7 } : void 0,
     webPreferences: {

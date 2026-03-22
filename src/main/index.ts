@@ -17,6 +17,7 @@ function createWindow(): void {
     minWidth: 880,
     minHeight: 580,
     backgroundColor: '#0F0F1A',
+    title: 'Buddy',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: process.platform === 'darwin' ? { x: 12, y: 7 } : undefined,
     webPreferences: {

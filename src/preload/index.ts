@@ -20,10 +20,11 @@ const api: Omit<WindowApi, 'platform'> = {
     delete:  (id)           => ipcRenderer.invoke('notes:delete', id),
   },
   pet: {
-    getState:      ()       => ipcRenderer.invoke('pet:getState'),
-    addXP:         (action) => ipcRenderer.invoke('pet:addXP', action),
-    updateStreak:  ()       => ipcRenderer.invoke('pet:updateStreak'),
-    setMood:       (mood)   => ipcRenderer.invoke('pet:setMood', mood),
+    getState:      ()        => ipcRenderer.invoke('pet:getState'),
+    addXP:         (action)  => ipcRenderer.invoke('pet:addXP', action),
+    updateStreak:  ()        => ipcRenderer.invoke('pet:updateStreak'),
+    setMood:       (mood)    => ipcRenderer.invoke('pet:setMood', mood),
+    updateWeight:  (score)   => ipcRenderer.invoke('pet:updateWeight', score),
   },
   settings: {
     get:    ()      => ipcRenderer.invoke('settings:get'),
@@ -43,6 +44,7 @@ const api: Omit<WindowApi, 'platform'> = {
     dailyReview:       ()                    => ipcRenderer.invoke('ai:dailyReview'),
     noteToTasks:       (content)             => ipcRenderer.invoke('ai:noteToTasks', content),
     summarizeNote:     (content)             => ipcRenderer.invoke('ai:summarizeNote', content),
+    buddySpeak:        (ctx)                 => ipcRenderer.invoke('ai:buddySpeak', ctx),
   },
   focus: {
     getSummaries:       (days)  => ipcRenderer.invoke('focus:getSummaries', days),

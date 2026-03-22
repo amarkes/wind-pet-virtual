@@ -22,7 +22,8 @@ const api = {
     getState: () => electron.ipcRenderer.invoke("pet:getState"),
     addXP: (action) => electron.ipcRenderer.invoke("pet:addXP", action),
     updateStreak: () => electron.ipcRenderer.invoke("pet:updateStreak"),
-    setMood: (mood) => electron.ipcRenderer.invoke("pet:setMood", mood)
+    setMood: (mood) => electron.ipcRenderer.invoke("pet:setMood", mood),
+    updateWeight: (score) => electron.ipcRenderer.invoke("pet:updateWeight", score)
   },
   settings: {
     get: () => electron.ipcRenderer.invoke("settings:get"),
@@ -41,7 +42,8 @@ const api = {
     analyzeCommits: (repoPath, limit) => electron.ipcRenderer.invoke("ai:analyzeCommits", repoPath, limit),
     dailyReview: () => electron.ipcRenderer.invoke("ai:dailyReview"),
     noteToTasks: (content) => electron.ipcRenderer.invoke("ai:noteToTasks", content),
-    summarizeNote: (content) => electron.ipcRenderer.invoke("ai:summarizeNote", content)
+    summarizeNote: (content) => electron.ipcRenderer.invoke("ai:summarizeNote", content),
+    buddySpeak: (ctx) => electron.ipcRenderer.invoke("ai:buddySpeak", ctx)
   },
   focus: {
     getSummaries: (days) => electron.ipcRenderer.invoke("focus:getSummaries", days),

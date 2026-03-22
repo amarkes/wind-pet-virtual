@@ -57,7 +57,7 @@ export type CreateNoteInput = Omit<Note, 'id' | 'createdAt' | 'updatedAt'>
 
 // ── Pet ───────────────────────────────────────────────────────────────────
 
-export type PetMood = 'idle' | 'happy' | 'excited' | 'tired' | 'sad' | 'focused' | 'celebrating'
+export type PetMood = 'idle' | 'happy' | 'excited' | 'tired' | 'sad' | 'focused' | 'celebrating' | 'dancing'
 
 export interface PetState {
   name: string
@@ -66,6 +66,7 @@ export interface PetState {
   level: number
   streak: number
   lastActive: string
+  weight: number   // 0.75 (thin/good coder) → 1.0 (normal) → 1.4 (fat/bad coder)
 }
 
 export interface PetStateWithProgress extends PetState {
@@ -196,6 +197,7 @@ export interface WindowApi {
     addXP: (action: string) => Promise<PetState>
     updateStreak: () => Promise<PetState>
     setMood: (mood: PetMood) => Promise<PetState>
+    updateWeight: (score: number) => Promise<PetState>
   }
   settings: {
     get: () => Promise<AppSettings>
@@ -215,6 +217,7 @@ export interface WindowApi {
     dailyReview: () => Promise<DailyReview>
     noteToTasks: (content: string) => Promise<string[]>
     summarizeNote: (content: string) => Promise<string>
+    buddySpeak: (ctx: { mood: string; name: string; level: number; streak: number; hour: number; completedToday: number; overdueCount: number; pendingCount: number; inProgressCount: number }) => Promise<string | null>
   }
   focus: {
     getSummaries: (days?: number) => Promise<DayFocusSummary[]>

@@ -1,6 +1,17 @@
+import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePetStore } from '../../stores/pet.store'
 import PetSprite from './PetSprite'
+
+// Level 1 (bebê) → 55px … Level 8 (Lendário) → 135px
+const MIN_SIZE = 55
+const MAX_SIZE = 135
+const MAX_LEVEL = 8
+
+function petSizeForLevel(level: number): number {
+  const clamped = Math.max(1, Math.min(level, MAX_LEVEL))
+  return Math.round(MIN_SIZE + ((clamped - 1) / (MAX_LEVEL - 1)) * (MAX_SIZE - MIN_SIZE))
+}
 
 const MOOD_ANIMATION: Record<string, string> = {
   idle:        'animate-pet-idle',
@@ -10,11 +21,29 @@ const MOOD_ANIMATION: Record<string, string> = {
   sad:         'animate-pet-sad',
   focused:     'animate-pet-focused',
   celebrating: 'animate-pet-celebrating',
+  dancing:     'animate-pet-dancing',
 }
 
+// Refresh idle message every 3 minutes
+const IDLE_REFRESH_MS = 3 * 60 * 1000
+
 export default function Pet() {
-  const { pet, message } = usePetStore()
-  const mood = pet?.mood ?? 'idle'
+  const { pet, message, refreshMessage, triggerMoodTemporary } = usePetStore()
+  const mood       = pet?.mood ?? 'idle'
+  const spriteSize = petSizeForLevel(pet?.level ?? 1)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (usePetStore.getState().pet?.mood === 'idle') {
+        refreshMessage()
+      }
+    }, IDLE_REFRESH_MS)
+    return () => clearInterval(id)
+  }, [refreshMessage])
+
+  function handlePetClick() {
+    if (mood !== 'dancing') triggerMoodTemporary('dancing', 6000)
+  }
 
   return (
     <div className="flex flex-col items-center gap-3 py-4">
@@ -34,10 +63,17 @@ export default function Pet() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Pet sprite */}
-      <div className={MOOD_ANIMATION[mood]}>
-        <PetSprite mood={mood} size={130} />
-      </div>
+      {/* Pet sprite — size grows with level, click to dance */}
+      <motion.div
+        className={MOOD_ANIMATION[mood]}
+        animate={{ width: spriteSize, height: spriteSize }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        onClick={handlePetClick}
+        title="Clique para dançar!"
+      >
+        <PetSprite mood={mood} size={spriteSize} weight={pet?.weight ?? 1.0} />
+      </motion.div>
 
       {/* Pet name + level */}
       {pet && (

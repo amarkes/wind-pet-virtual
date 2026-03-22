@@ -216,6 +216,53 @@ Responda apenas com JSON válido sem markdown:
   }
 }
 
+// ── Buddy Speak ─────────────────────────────────────────────────────────────
+
+export interface BuddySpeakContext {
+  mood:            string
+  name:            string
+  level:           number
+  streak:          number
+  hour:            number
+  completedToday:  number
+  overdueCount:    number
+  pendingCount:    number
+  inProgressCount: number
+}
+
+export async function buddySpeak(apiKey: string, ctx: BuddySpeakContext): Promise<string> {
+  const period = ctx.hour < 12 ? 'manhã' : ctx.hour < 18 ? 'tarde' : 'noite'
+
+  // Build a compact activity summary so the AI can comment on it meaningfully
+  const activityParts: string[] = []
+  if (ctx.completedToday > 0) activityParts.push(`${ctx.completedToday} tarefa(s) concluída(s) hoje`)
+  if (ctx.inProgressCount > 0) activityParts.push(`${ctx.inProgressCount} em andamento`)
+  if (ctx.overdueCount > 0)    activityParts.push(`${ctx.overdueCount} atrasada(s)`)
+  if (ctx.pendingCount > 0)    activityParts.push(`${ctx.pendingCount} pendente(s)`)
+  const activity = activityParts.length > 0 ? activityParts.join(', ') : 'sem tarefas registradas'
+
+  return generate(
+    apiKey,
+    `Você é ${ctx.name}, um pet virtual fofo de um desenvolvedor. Personalidade: carinhosa, espontânea, às vezes engraçada, nunca robótica.
+
+Contexto real do usuário agora:
+- Humor atual: ${ctx.mood}
+- Nível: ${ctx.level}, streak: ${ctx.streak} dias, período: ${period}
+- Atividade de hoje: ${activity}
+
+Regras:
+1. Comente DIRETAMENTE sobre o que o usuário fez ou precisa fazer — nunca fale de forma genérica.
+2. Se concluiu muitas tarefas: celebre com entusiasmo específico.
+3. Se tem tarefas atrasadas: mencione de forma gentil, motivadora.
+4. Se está em andamento: incentive a finalizar.
+5. Se não fez nada ainda: motive sem cobrar.
+6. Máximo 12 palavras em português brasileiro.
+7. Seja natural, varie o tom — evite sempre começar igual.
+8. Responda APENAS com a frase, sem aspas.`,
+    `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`,
+  )
+}
+
 // ── Note to Tasks ───────────────────────────────────────────────────────────
 
 export async function noteToTasks(apiKey: string, content: string): Promise<string[]> {

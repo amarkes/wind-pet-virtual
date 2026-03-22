@@ -112,19 +112,37 @@ function CommitCard({ commit }: { commit: CommitInfo }) {
   )
 }
 
+const STORAGE_KEY = 'lastCommitAnalysis'
+
+interface PersistedAnalysis {
+  result: CommitAnalysis
+  analyzedAt: string
+}
+
 export default function CommitPage() {
-  const [repoPath, setRepoPath] = useState('')
-  const [limit, setLimit]       = useState(1)
-  const [result, setResult]     = useState<CommitAnalysis | null>(null)
+  const [repoPath, setRepoPath]   = useState('')
+  const [limit, setLimit]         = useState(1)
+  const [result, setResult]       = useState<CommitAnalysis | null>(null)
+  const [analyzedAt, setAnalyzedAt] = useState<string | null>(null)
 
   const { analyzeCommits, isLoading, error, clearError } = useAIStore()
-  const { setMessage, triggerMoodTemporary } = usePetStore()
+  const { setMessage, triggerMoodTemporary, updateWeight } = usePetStore()
 
   useEffect(() => {
     window.api.settings.get().then((s) => {
       if (s.workingDirectory) setRepoPath(s.workingDirectory)
       if (s.commitAnalysisLimit) setLimit(s.commitAnalysisLimit)
     })
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed: PersistedAnalysis = JSON.parse(saved)
+        setResult(parsed.result)
+        setAnalyzedAt(parsed.analyzedAt)
+      }
+    } catch {
+      // ignore corrupted data
+    }
   }, [])
 
   async function handleAnalyze() {
@@ -132,9 +150,13 @@ export default function CommitPage() {
     clearError()
     const analysis = await analyzeCommits(repoPath.trim(), limit)
     if (analysis) {
+      const now = new Date().toISOString()
       setResult(analysis)
+      setAnalyzedAt(now)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ result: analysis, analyzedAt: now }))
       triggerMoodTemporary(analysis.petMood, 5000)
       setMessage(analysis.petMessage)
+      updateWeight(analysis.score)
     }
   }
 
@@ -207,7 +229,18 @@ export default function CommitPage() {
           {/* Score + feedback geral */}
           <div className="card p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text-primary">Análise Geral do Código</h2>
+              <div className="flex flex-col gap-0.5">
+                <h2 className="text-sm font-semibold text-text-primary">Análise Geral do Código</h2>
+                {analyzedAt && (
+                  <span className="text-[10px] text-text-muted">
+                    Atualizado em{' '}
+                    {new Date(analyzedAt).toLocaleDateString('pt-BR', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                )}
+              </div>
               <ScoreBadge score={result.score} />
             </div>
             <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
