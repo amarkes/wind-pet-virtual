@@ -99,6 +99,12 @@ export interface AISuggestion {
   suggestedTags?: string[]
 }
 
+export interface CommitReview {
+  issues: string[]
+  suggestions: string[]
+  rating: 'good' | 'ok' | 'needs_work'
+}
+
 export interface CommitInfo {
   hash: string
   message: string
@@ -106,6 +112,7 @@ export interface CommitInfo {
   date: string
   additions: number
   deletions: number
+  review?: CommitReview
 }
 
 export interface CommitAnalysis {

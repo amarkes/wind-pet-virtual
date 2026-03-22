@@ -4,6 +4,7 @@ import type {
   AISuggestion,
   CommitAnalysis,
   CommitInfo,
+  CommitReview,
   DailyReview,
   Task,
   TaskDifficulty,
@@ -86,14 +87,19 @@ export async function analyzeCommits(
   const git = simpleGit(repoPath)
   const log = await git.log({ maxCount: limit })
 
-  const commits: CommitInfo[] = await Promise.all(
+  const MAX_DIFF_CHARS = 3500
+
+  const commitsWithDiff: (CommitInfo & { rawDiff: string })[] = await Promise.all(
     log.all.map(async (c) => {
       let additions = 0
       let deletions = 0
+      let rawDiff = ''
       try {
-        const diff = await git.diffSummary([`${c.hash}^`, c.hash])
-        additions = diff.insertions
-        deletions = diff.deletions
+        const summary = await git.diffSummary([`${c.hash}^`, c.hash])
+        additions = summary.insertions
+        deletions = summary.deletions
+        const full = await git.diff([`${c.hash}^`, c.hash])
+        rawDiff = full.length > MAX_DIFF_CHARS ? full.slice(0, MAX_DIFF_CHARS) + '\n... (diff truncado)' : full
       } catch {
         // first commit or merge commit — ignore diff error
       }
@@ -104,32 +110,67 @@ export async function analyzeCommits(
         date: c.date,
         additions,
         deletions,
+        rawDiff,
       }
     }),
   )
 
-  const commitsText = commits
-    .map((c) => `- ${c.hash} "${c.message}" (+${c.additions}/-${c.deletions} linhas)`)
-    .join('\n')
+  const commitsText = commitsWithDiff
+    .map((c) =>
+      `## Commit ${c.hash}: "${c.message}" (+${c.additions}/-${c.deletions})\n${c.rawDiff || '(sem diff disponível)'}`,
+    )
+    .join('\n\n---\n\n')
 
   const text = await generate(apiKey,
-    `Você é um mentor de engenharia de software analisando commits de um desenvolvedor.
-Avalie a qualidade dos commits e dê feedback construtivo em português.
+    `Você é um engenheiro de software sênior fazendo code review de commits.
+Analise as mudanças reais de código (diffs), avaliando:
+- Qualidade e clareza do código
+- Boas práticas e padrões (SOLID, DRY, etc.)
+- Possíveis bugs ou problemas de lógica
+- Segurança (injeção, exposição de dados, etc.)
+- Legibilidade e manutenibilidade
+- Qualidade da mensagem do commit
+
 Responda apenas com JSON válido sem markdown:
 {
-  "feedback": "texto de análise geral (2-3 parágrafos)",
+  "feedback": "análise geral do código em 2-3 parágrafos",
   "score": número 0-100,
-  "tips": ["dica 1", "dica 2", ...],
+  "tips": ["sugestão prática 1", "sugestão prática 2"],
+  "commitReviews": {
+    "HASH_7_CHARS": {
+      "issues": ["problema encontrado no código"],
+      "suggestions": ["melhoria sugerida"],
+      "rating": "good" | "ok" | "needs_work"
+    }
+  },
   "petMood": "idle" | "happy" | "excited" | "tired" | "sad",
   "petMessage": "mensagem curta e animada do pet (1 frase)"
 }`,
-    `Analise estes ${commits.length} commits recentes:\n${commitsText}`,
+    `Faça code review destes ${commitsWithDiff.length} commits:\n\n${commitsText}`,
   )
 
   const parsed = JSON.parse(text) as {
-    feedback: string; score: number; tips: string[]; petMood: PetMood; petMessage: string
+    feedback: string
+    score: number
+    tips: string[]
+    commitReviews?: Record<string, { issues: string[]; suggestions: string[]; rating: string }>
+    petMood: PetMood
+    petMessage: string
   }
-  return { ...parsed, commits }
+
+  const commits: CommitInfo[] = commitsWithDiff.map((c) => {
+    const raw = parsed.commitReviews?.[c.hash]
+    const review: CommitReview | undefined = raw
+      ? {
+          issues: raw.issues ?? [],
+          suggestions: raw.suggestions ?? [],
+          rating: (raw.rating as CommitReview['rating']) ?? 'ok',
+        }
+      : undefined
+    return { hash: c.hash, message: c.message, author: c.author, date: c.date, additions: c.additions, deletions: c.deletions, review }
+  })
+
+  return { feedback: parsed.feedback, score: parsed.score, tips: parsed.tips, petMood: parsed.petMood, petMessage: parsed.petMessage, commits }
 }
 
 // ── Daily Review ────────────────────────────────────────────────────────────
