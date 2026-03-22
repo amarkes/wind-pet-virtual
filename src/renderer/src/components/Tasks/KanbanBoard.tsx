@@ -168,7 +168,7 @@ function KanbanColumn({ column, tasks }: {
 // ── Kanban board ───────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
-  const { tasks, update, search } = useTasksStore()
+  const { tasks, update, complete, cancel, search } = useTasksStore()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
@@ -199,10 +199,13 @@ export default function KanbanBoard() {
     const task = tasks.find((t) => t.id === taskId)
 
     if (task && task.status !== newStatus) {
-      update(taskId, {
-        status: newStatus,
-        completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined,
-      })
+      if (newStatus === 'completed') {
+        complete(taskId)
+      } else if (newStatus === 'cancelled') {
+        cancel(taskId)
+      } else {
+        update(taskId, { status: newStatus })
+      }
     }
   }
 

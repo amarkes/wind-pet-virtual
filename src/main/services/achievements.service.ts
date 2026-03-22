@@ -143,6 +143,51 @@ export function checkAfterFocusHour(): Achievement[] {
   return r ? [r] : []
 }
 
+// ── Retroactive check (runs on app start / page open) ────────────────────────
+
+export function checkRetroactive(): Achievement[] {
+  const unlocked: Achievement[] = []
+
+  const tasks = store.getTasks()
+  const completed = tasks.filter((t) => t.status === 'completed')
+  const count = completed.length
+
+  if (count >= 1) {
+    const r = tryUnlock('first_task')
+    if (r) unlocked.push(r)
+  }
+  if (count >= 10) {
+    const r = tryUnlock('tasks_10')
+    if (r) unlocked.push(r)
+  }
+  if (count >= 50) {
+    const r = tryUnlock('tasks_50')
+    if (r) unlocked.push(r)
+  }
+  if (completed.some((t) => t.difficulty === 'epic')) {
+    const r = tryUnlock('epic_slayer')
+    if (r) unlocked.push(r)
+  }
+
+  const notes = store.getNotes()
+  if (notes.length >= 10) {
+    const r = tryUnlock('note_taker')
+    if (r) unlocked.push(r)
+  }
+
+  const pet = store.getPetState()
+  if (pet.level >= 5) {
+    const r = tryUnlock('level_5')
+    if (r) unlocked.push(r)
+  }
+  if (pet.streak >= 7) {
+    const r = tryUnlock('streak_7')
+    if (r) unlocked.push(r)
+  }
+
+  return unlocked
+}
+
 // ── Get all with definitions filled in ──────────────────────────────────────
 
 export function getAllAchievements(): Achievement[] {

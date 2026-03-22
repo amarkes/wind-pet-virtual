@@ -5,6 +5,7 @@ import type { AchievementId } from '../../shared/types'
 
 export function registerAchievementsIpc(): void {
   ipcMain.handle('achievements:getAll', () => {
+    achievements.checkRetroactive()
     return achievements.getAllAchievements()
   })
 
