@@ -82,7 +82,4 @@ export function registerTasksIpc(): void {
   ipcMain.handle('tasks:removeSubtask', (_, taskId: string, subtaskId: string) => {
     return store.removeSubtask(taskId, subtaskId)
   })
-
-  ipcMain.handle('tagColors:get', () => store.getTagColors())
-  ipcMain.handle('tagColors:set', (_, colors: Record<string, string>) => store.setTagColors(colors))
 }

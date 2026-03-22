@@ -4,6 +4,7 @@ import { registerPetIpc } from './pet'
 import { registerAiIpc } from './ai'
 import { registerFocusIpc } from './focus'
 import { registerAchievementsIpc } from './achievements'
+import { registerSettingsIpc } from './settings'
 
 export function registerAllIpc(): void {
   registerTasksIpc()
@@ -12,4 +13,5 @@ export function registerAllIpc(): void {
   registerAiIpc()
   registerFocusIpc()
   registerAchievementsIpc()
+  registerSettingsIpc()
 }
