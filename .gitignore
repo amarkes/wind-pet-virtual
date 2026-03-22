@@ -34,4 +34,5 @@ dist/
 *.dylib
 *.app
 out
+data/
 .claude

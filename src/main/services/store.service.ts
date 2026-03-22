@@ -1,86 +1,104 @@
-import Store from 'electron-store'
 import { randomUUID } from 'crypto'
-import type { Task, Note, PetState, AppSettings, AuditLog, AuditAction, Subtask, FocusSession, DayFocusSummary, Achievement, AchievementId } from '../../shared/types'
+import { getDb } from './db'
+import type {
+  Task, Note, PetState, AppSettings, AuditLog, AuditAction,
+  Subtask, FocusSession, DayFocusSummary, Achievement, AchievementId,
+} from '../../shared/types'
 
-interface StoreSchema {
-  tasks: Task[]
-  notes: Note[]
-  pet: PetState
-  settings: AppSettings
-  auditLogs: AuditLog[]
-  focusSessions: FocusSession[]
-  achievements: Achievement[]
-  tagColors: Record<string, string>
+// ── Row mappers ────────────────────────────────────────────────────────────
+
+type Row = Record<string, unknown>
+
+function toTask(r: Row): Task {
+  return {
+    id:               r.id as string,
+    title:            r.title as string,
+    description:      r.description as string | undefined,
+    status:           r.status as Task['status'],
+    priority:         r.priority as Task['priority'],
+    difficulty:       r.difficulty as Task['difficulty'],
+    tags:             JSON.parse(r.tags as string || '[]'),
+    estimatedMinutes: r.estimated_minutes as number | undefined,
+    dueDate:          r.due_date as string | undefined,
+    createdAt:        r.created_at as string,
+    updatedAt:        r.updated_at as string,
+    completedAt:      r.completed_at as string | undefined,
+    subtasks:         JSON.parse(r.subtasks as string || '[]'),
+  }
 }
 
-const store = new Store<StoreSchema>({
-  defaults: {
-    tasks: [],
-    notes: [],
-    auditLogs: [],
-    focusSessions: [],
-    achievements: [],
-    tagColors: {},
-    pet: {
-      name: 'Buddy',
-      mood: 'idle',
-      xp: 0,
-      level: 1,
-      streak: 0,
-      lastActive: new Date().toISOString(),
-      weight: 1.0,
-    },
-    settings: {
-      userName: '',
-      geminiApiKey: '',
-      workingDirectory: '',
-      commitAnalysisLimit: 1,
-    },
-  },
-})
+function toNote(r: Row): Note {
+  return {
+    id:        r.id as string,
+    title:     r.title as string | undefined,
+    content:   r.content as string,
+    tags:      JSON.parse(r.tags as string || '[]'),
+    pinned:    Boolean(r.pinned),
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  }
+}
+
+function toPet(r: Row): PetState {
+  return {
+    name:       r.name as string,
+    mood:       r.mood as PetState['mood'],
+    xp:         r.xp as number,
+    level:      r.level as number,
+    streak:     r.streak as number,
+    lastActive: r.last_active as string,
+    weight:     r.weight as number,
+  }
+}
+
+function toSettings(r: Row): AppSettings {
+  return {
+    userName:            r.user_name as string,
+    geminiApiKey:        r.gemini_api_key as string,
+    workingDirectory:    r.working_directory as string,
+    commitAnalysisLimit: r.commit_analysis_limit as number,
+  }
+}
 
 // ── Tasks ──────────────────────────────────────────────────────────────────
 
 export function getTasks(): Task[] {
-  return store.get('tasks')
+  return (getDb().prepare('SELECT * FROM tasks ORDER BY created_at DESC').all() as Row[]).map(toTask)
 }
 
 export function createTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Task {
-  const task: Task = {
-    ...data,
-    id: randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  const tasks = store.get('tasks')
-  store.set('tasks', [...tasks, task])
-  return task
+  const db  = getDb()
+  const id  = randomUUID()
+  const now = new Date().toISOString()
+  db.prepare(`
+    INSERT INTO tasks (id,title,description,status,priority,difficulty,tags,estimated_minutes,due_date,created_at,updated_at,completed_at,subtasks)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(id, data.title, data.description ?? null, data.status, data.priority, data.difficulty,
+    JSON.stringify(data.tags ?? []), data.estimatedMinutes ?? null, data.dueDate ?? null,
+    now, now, data.completedAt ?? null, JSON.stringify(data.subtasks ?? []))
+  return toTask(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row)
 }
 
 export function updateTask(id: string, data: Partial<Task>): Task | null {
-  const tasks = store.get('tasks')
-  const index = tasks.findIndex((t) => t.id === id)
-  if (index === -1) return null
-
-  const updated = { ...tasks[index], ...data, updatedAt: new Date().toISOString() }
-  tasks[index] = updated
-  store.set('tasks', tasks)
-  return updated
+  const db  = getDb()
+  const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row | undefined
+  if (!row) return null
+  const t   = { ...toTask(row), ...data, updatedAt: new Date().toISOString() }
+  db.prepare(`
+    UPDATE tasks SET title=?,description=?,status=?,priority=?,difficulty=?,tags=?,
+    estimated_minutes=?,due_date=?,updated_at=?,completed_at=?,subtasks=? WHERE id=?
+  `).run(t.title, t.description ?? null, t.status, t.priority, t.difficulty,
+    JSON.stringify(t.tags ?? []), t.estimatedMinutes ?? null, t.dueDate ?? null,
+    t.updatedAt, t.completedAt ?? null, JSON.stringify(t.subtasks ?? []), id)
+  return t
 }
 
 export function deleteTask(id: string): boolean {
-  const tasks = store.get('tasks')
-  const filtered = tasks.filter((t) => t.id !== id)
-  if (filtered.length === tasks.length) return false
-  store.set('tasks', filtered)
-  return true
+  return getDb().prepare('DELETE FROM tasks WHERE id = ?').run(id).changes > 0
 }
 
 export function completeTask(id: string): Task | null {
-  return updateTask(id, {
-    status: 'completed',
-    completedAt: new Date().toISOString(),
-  })
+  return updateTask(id, { status: 'completed', completedAt: new Date().toISOString() })
 }
 
 export function cancelTask(id: string): Task | null {
@@ -88,207 +106,210 @@ export function cancelTask(id: string): Task | null {
 }
 
 export function addSubtask(taskId: string, title: string): Task | null {
-  const tasks = getTasks()
-  const task = tasks.find((t) => t.id === taskId)
+  const task = getTasks().find((t) => t.id === taskId)
   if (!task) return null
   const subtask: Subtask = { id: randomUUID(), title, completed: false }
-  const subtasks = [...(task.subtasks ?? []), subtask]
-  return updateTask(taskId, { subtasks })
+  return updateTask(taskId, { subtasks: [...(task.subtasks ?? []), subtask] })
 }
 
 export function toggleSubtask(taskId: string, subtaskId: string): Task | null {
-  const tasks = getTasks()
-  const task = tasks.find((t) => t.id === taskId)
+  const task = getTasks().find((t) => t.id === taskId)
   if (!task) return null
-  const subtasks = (task.subtasks ?? []).map((s) =>
-    s.id === subtaskId ? { ...s, completed: !s.completed } : s,
-  )
-  return updateTask(taskId, { subtasks })
+  return updateTask(taskId, {
+    subtasks: (task.subtasks ?? []).map((s) =>
+      s.id === subtaskId ? { ...s, completed: !s.completed } : s
+    ),
+  })
 }
 
 export function removeSubtask(taskId: string, subtaskId: string): Task | null {
-  const tasks = getTasks()
-  const task = tasks.find((t) => t.id === taskId)
+  const task = getTasks().find((t) => t.id === taskId)
   if (!task) return null
-  const subtasks = (task.subtasks ?? []).filter((s) => s.id !== subtaskId)
-  return updateTask(taskId, { subtasks })
+  return updateTask(taskId, { subtasks: (task.subtasks ?? []).filter((s) => s.id !== subtaskId) })
 }
 
 // ── Tag Colors ─────────────────────────────────────────────────────────────
 
 export function getTagColors(): Record<string, string> {
-  return store.get('tagColors')
+  const rows = getDb().prepare('SELECT tag, color FROM tag_colors').all() as { tag: string; color: string }[]
+  return Object.fromEntries(rows.map((r) => [r.tag, r.color]))
 }
 
 export function setTagColors(colors: Record<string, string>): Record<string, string> {
-  store.set('tagColors', colors)
+  const db     = getDb()
+  const upsert = db.prepare('INSERT OR REPLACE INTO tag_colors (tag,color) VALUES (?,?)')
+  const del    = db.prepare('DELETE FROM tag_colors WHERE tag = ?')
+  const existing = getTagColors()
+  db.transaction(() => {
+    for (const tag of Object.keys(existing)) {
+      if (!(tag in colors)) del.run(tag)
+    }
+    for (const [tag, color] of Object.entries(colors)) {
+      upsert.run(tag, color)
+    }
+  })()
   return colors
 }
 
-// ── Audit Logs ──────────────────────────────────────────────────────────────
+// ── Audit Logs ─────────────────────────────────────────────────────────────
 
 export function getAuditLogs(): AuditLog[] {
-  return store.get('auditLogs')
+  return (getDb().prepare('SELECT * FROM audit_logs ORDER BY timestamp DESC').all() as Row[]).map((r) => ({
+    id:        r.id as string,
+    taskId:    r.task_id as string,
+    taskTitle: r.task_title as string,
+    action:    r.action as AuditAction,
+    timestamp: r.timestamp as string,
+    details:   r.details as string | undefined,
+  }))
 }
 
 export function addAuditLog(taskId: string, taskTitle: string, action: AuditAction, details?: string): AuditLog {
-  const entry: AuditLog = {
-    id: randomUUID(),
-    taskId,
-    taskTitle,
-    action,
-    timestamp: new Date().toISOString(),
-    details,
-  }
-  const logs = store.get('auditLogs')
-  store.set('auditLogs', [entry, ...logs])
+  const entry: AuditLog = { id: randomUUID(), taskId, taskTitle, action, timestamp: new Date().toISOString(), details }
+  getDb().prepare(
+    'INSERT INTO audit_logs (id,task_id,task_title,action,timestamp,details) VALUES (?,?,?,?,?,?)'
+  ).run(entry.id, entry.taskId, entry.taskTitle, entry.action, entry.timestamp, entry.details ?? null)
   return entry
 }
 
 // ── Notes ──────────────────────────────────────────────────────────────────
 
 export function getNotes(): Note[] {
-  return store.get('notes')
+  return (getDb().prepare('SELECT * FROM notes ORDER BY pinned DESC, updated_at DESC').all() as Row[]).map(toNote)
 }
 
 export function createNote(data: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>): Note {
-  const note: Note = {
-    ...data,
-    id: randomUUID(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  const notes = store.get('notes')
-  store.set('notes', [note, ...notes])
-  return note
+  const db  = getDb()
+  const id  = randomUUID()
+  const now = new Date().toISOString()
+  db.prepare(
+    'INSERT INTO notes (id,title,content,tags,pinned,created_at,updated_at) VALUES (?,?,?,?,?,?,?)'
+  ).run(id, data.title ?? null, data.content, JSON.stringify(data.tags ?? []), data.pinned ? 1 : 0, now, now)
+  return toNote(db.prepare('SELECT * FROM notes WHERE id = ?').get(id) as Row)
 }
 
 export function updateNote(id: string, data: Partial<Note>): Note | null {
-  const notes = store.get('notes')
-  const index = notes.findIndex((n) => n.id === id)
-  if (index === -1) return null
-
-  const updated = { ...notes[index], ...data, updatedAt: new Date().toISOString() }
-  notes[index] = updated
-  store.set('notes', notes)
-  return updated
+  const db  = getDb()
+  const row = db.prepare('SELECT * FROM notes WHERE id = ?').get(id) as Row | undefined
+  if (!row) return null
+  const n = { ...toNote(row), ...data, updatedAt: new Date().toISOString() }
+  db.prepare(
+    'UPDATE notes SET title=?,content=?,tags=?,pinned=?,updated_at=? WHERE id=?'
+  ).run(n.title ?? null, n.content, JSON.stringify(n.tags), n.pinned ? 1 : 0, n.updatedAt, id)
+  return n
 }
 
 export function deleteNote(id: string): boolean {
-  const notes = store.get('notes')
-  const filtered = notes.filter((n) => n.id !== id)
-  if (filtered.length === notes.length) return false
-  store.set('notes', filtered)
-  return true
+  return getDb().prepare('DELETE FROM notes WHERE id = ?').run(id).changes > 0
 }
 
 // ── Pet ────────────────────────────────────────────────────────────────────
 
 export function getPetState(): PetState {
-  return store.get('pet')
+  return toPet(getDb().prepare('SELECT * FROM pet WHERE id = 1').get() as Row)
 }
 
 export function updatePetState(data: Partial<PetState>): PetState {
-  const pet = store.get('pet')
-  const updated = { ...pet, ...data }
-  store.set('pet', updated)
-  return updated
+  const p = { ...getPetState(), ...data }
+  getDb().prepare(
+    'UPDATE pet SET name=?,mood=?,xp=?,level=?,streak=?,last_active=?,weight=? WHERE id=1'
+  ).run(p.name, p.mood, p.xp, p.level, p.streak, p.lastActive, p.weight)
+  return p
 }
 
-// score < 70 → pet gets fatter; score >= 70 → pet gets thinner
 export function updatePetWeight(score: number): PetState {
-  const pet = store.get('pet')
-  const current = pet.weight ?? 1.0
+  const current = getPetState()
   const delta   = score >= 70 ? -0.04 : +0.06
-  const weight  = Math.min(1.4, Math.max(0.75, current + delta))
+  const weight  = Math.min(1.4, Math.max(0.75, (current.weight ?? 1.0) + delta))
   return updatePetState({ weight })
 }
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
 export function getSettings(): AppSettings {
-  return store.get('settings')
+  return toSettings(getDb().prepare('SELECT * FROM settings WHERE id = 1').get() as Row)
 }
 
 export function updateSettings(data: Partial<AppSettings>): AppSettings {
-  const settings = store.get('settings')
-  const updated = { ...settings, ...data }
-  store.set('settings', updated)
-  return updated
+  const s = { ...getSettings(), ...data }
+  getDb().prepare(
+    'UPDATE settings SET user_name=?,gemini_api_key=?,working_directory=?,commit_analysis_limit=? WHERE id=1'
+  ).run(s.userName, s.geminiApiKey ?? '', s.workingDirectory ?? '', s.commitAnalysisLimit)
+  return s
 }
 
-// ── Focus Sessions ──────────────────────────────────────────────────────────
+// ── Focus Sessions ─────────────────────────────────────────────────────────
 
 export function getFocusSessions(): FocusSession[] {
-  return store.get('focusSessions')
+  return (getDb().prepare('SELECT * FROM focus_sessions ORDER BY started_at DESC').all() as Row[]).map((r) => ({
+    id:              r.id as string,
+    startedAt:       r.started_at as string,
+    endedAt:         r.ended_at as string | undefined,
+    durationSeconds: r.duration_seconds as number | undefined,
+  }))
 }
 
 export function startFocusSession(): FocusSession {
   const session: FocusSession = { id: randomUUID(), startedAt: new Date().toISOString() }
-  const sessions = store.get('focusSessions')
-  store.set('focusSessions', [session, ...sessions])
+  getDb().prepare('INSERT INTO focus_sessions (id,started_at) VALUES (?,?)').run(session.id, session.startedAt)
   return session
 }
 
 export function endFocusSession(id: string): FocusSession | null {
-  const sessions = store.get('focusSessions')
-  const idx = sessions.findIndex((s) => s.id === id)
-  if (idx === -1) return null
-  const endedAt = new Date().toISOString()
+  const db  = getDb()
+  const row = db.prepare('SELECT * FROM focus_sessions WHERE id = ?').get(id) as Row | undefined
+  if (!row) return null
+  const endedAt         = new Date().toISOString()
   const durationSeconds = Math.round(
-    (new Date(endedAt).getTime() - new Date(sessions[idx].startedAt).getTime()) / 1000,
+    (new Date(endedAt).getTime() - new Date(row.started_at as string).getTime()) / 1000
   )
-  sessions[idx] = { ...sessions[idx], endedAt, durationSeconds }
-  store.set('focusSessions', sessions)
-  return sessions[idx]
+  db.prepare('UPDATE focus_sessions SET ended_at=?,duration_seconds=? WHERE id=?').run(endedAt, durationSeconds, id)
+  return { id, startedAt: row.started_at as string, endedAt, durationSeconds }
 }
 
 export function getFocusSummaries(days = 7): DayFocusSummary[] {
-  const sessions = store.get('focusSessions').filter((s) => s.durationSeconds !== undefined)
-  const result: Map<string, DayFocusSummary> = new Map()
-
-  const today = new Date()
+  const result = new Map<string, DayFocusSummary>()
+  const today  = new Date()
   for (let i = 0; i < days; i++) {
-    const d = new Date(today)
+    const d   = new Date(today)
     d.setDate(today.getDate() - i)
     const key = d.toISOString().split('T')[0]
     result.set(key, { date: key, totalFocusSeconds: 0, totalAwaySeconds: 0, sessions: 0 })
   }
-
-  for (const s of sessions) {
-    const key = s.startedAt.split('T')[0]
+  const rows = getDb().prepare('SELECT * FROM focus_sessions WHERE duration_seconds IS NOT NULL').all() as Row[]
+  for (const r of rows) {
+    const key   = (r.started_at as string).split('T')[0]
     const entry = result.get(key)
-    if (entry && s.durationSeconds !== undefined) {
-      entry.totalFocusSeconds += s.durationSeconds
-      entry.sessions += 1
-    }
+    if (entry) { entry.totalFocusSeconds += r.duration_seconds as number; entry.sessions++ }
   }
-
   return Array.from(result.values()).sort((a, b) => a.date.localeCompare(b.date))
 }
 
 // ── Achievements ────────────────────────────────────────────────────────────
 
 export function getAchievements(): Achievement[] {
-  return store.get('achievements')
+  return (getDb().prepare('SELECT * FROM achievements').all() as Row[]).map((r) => ({
+    id:          r.id as AchievementId,
+    title:       r.title as string,
+    description: r.description as string,
+    icon:        r.icon as string,
+    unlockedAt:  r.unlocked_at as string | undefined,
+  }))
 }
 
 export function unlockAchievement(id: AchievementId, meta: Omit<Achievement, 'id' | 'unlockedAt'>): Achievement {
-  const achievements = store.get('achievements')
-  const existing = achievements.find((a) => a.id === id)
-  if (existing?.unlockedAt) return existing  // already unlocked
-
-  const achievement: Achievement = { ...meta, id, unlockedAt: new Date().toISOString() }
-  if (existing) {
-    const idx = achievements.findIndex((a) => a.id === id)
-    achievements[idx] = achievement
-    store.set('achievements', achievements)
-  } else {
-    store.set('achievements', [...achievements, achievement])
+  const db  = getDb()
+  const row = db.prepare('SELECT * FROM achievements WHERE id = ?').get(id) as Row | undefined
+  if (row?.unlocked_at) {
+    return { id, title: row.title as string, description: row.description as string, icon: row.icon as string, unlockedAt: row.unlocked_at as string }
   }
-  return achievement
+  const unlockedAt = new Date().toISOString()
+  db.prepare('INSERT OR REPLACE INTO achievements (id,title,description,icon,unlocked_at) VALUES (?,?,?,?,?)')
+    .run(id, meta.title, meta.description, meta.icon, unlockedAt)
+  return { id, ...meta, unlockedAt }
 }
 
 export function isAchievementUnlocked(id: AchievementId): boolean {
-  return store.get('achievements').some((a) => a.id === id && !!a.unlockedAt)
+  const row = getDb().prepare('SELECT unlocked_at FROM achievements WHERE id = ?').get(id) as { unlocked_at: string | null } | undefined
+  return !!row?.unlocked_at
 }

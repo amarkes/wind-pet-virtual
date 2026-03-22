@@ -8,7 +8,10 @@
       "Bash(sips -z 32 32 resources/icon.png --out icon.iconset/icon_16x16@2x.png)",
       "Bash(sips -z 32 32 resources/icon.png --out icon.iconset/icon_32x32.png)",
       "Bash(sips -z 64 64 resources/icon.png --out icon.iconset/icon_32x32@2x.png)",
-      "Bash(sips -z 128 128 resources/icon.png --out icon.iconset/icon_128x128.png)"
+      "Bash(sips -z 128 128 resources/icon.png --out icon.iconset/icon_128x128.png)",
+      "Read(//Users/antonio.ma.neto/Library/Application Support/**)",
+      "Bash(ls /Users/antonio.ma.neto/random/pet/tsconfig*.json)",
+      "Bash(npx electron-rebuild:*)"
     ]
   }
 }
