@@ -9,7 +9,7 @@ interface AIStore {
   lastCommitAnalysis: CommitAnalysis | null
   lastDailyReview: DailyReview | null
 
-  suggestTask: (title: string) => Promise<AISuggestion | null>
+  suggestTask: (title: string, description?: string) => Promise<AISuggestion | null>
   breakIntoSubtasks: (title: string, description?: string) => Promise<string[]>
   analyzeCommits: (repoPath: string, limit?: number) => Promise<CommitAnalysis | null>
   dailyReview: () => Promise<DailyReview | null>
@@ -25,10 +25,10 @@ export const useAIStore = create<AIStore>((set) => ({
   lastCommitAnalysis: null,
   lastDailyReview: null,
 
-  suggestTask: async (title) => {
+  suggestTask: async (title, description) => {
     set({ isLoading: true, error: null })
     try {
-      const suggestion = await window.api.ai.suggestTask(title)
+      const suggestion = await window.api.ai.suggestTask(title, description)
       set({ isLoading: false, lastSuggestion: suggestion })
       return suggestion
     } catch (e) {

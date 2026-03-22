@@ -94,6 +94,9 @@ export interface AISuggestion {
   difficulty: TaskDifficulty
   estimatedMinutes: number
   reasoning: string
+  improvedTitle?: string
+  improvedDescription?: string
+  suggestedTags?: string[]
 }
 
 export interface CommitInfo {
@@ -199,7 +202,7 @@ export interface WindowApi {
     getAll: () => Promise<AuditLog[]>
   }
   ai: {
-    suggestTask: (title: string) => Promise<AISuggestion>
+    suggestTask: (title: string, description?: string) => Promise<AISuggestion>
     breakIntoSubtasks: (taskTitle: string, taskDescription?: string) => Promise<string[]>
     analyzeCommits: (repoPath: string, limit?: number) => Promise<CommitAnalysis>
     dailyReview: () => Promise<DailyReview>

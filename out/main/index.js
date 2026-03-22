@@ -536,22 +536,30 @@ async function generate(apiKey, system, prompt) {
   });
   return (response.text ?? "").trim().replace(/^```json\n?|\n?```$/g, "");
 }
-async function suggestTask(apiKey, title) {
+async function suggestTask(apiKey, title, description) {
   const text = await generate(
     apiKey,
-    `Você é um assistente de produtividade que analisa títulos de tarefas e sugere:
+    `Você é um assistente de produtividade que analisa tarefas e sugere melhorias.
+Analise o título e a descrição fornecidos e retorne um JSON com:
 - difficulty: "easy" | "medium" | "hard" | "epic"
 - estimatedMinutes: número inteiro positivo
-- reasoning: breve explicação em português (max 1 frase)
+- reasoning: breve explicação da dificuldade em português (max 1 frase)
+- improvedTitle: título melhorado — mais claro, acionável e específico (em português)
+- improvedDescription: descrição melhorada e detalhada (max 2 frases em português); se não houver descrição original, crie uma relevante
+- suggestedTags: array de 2 a 4 tags em minúsculas (exemplos: "bug", "frontend", "backend", "docs", "reunião", "refactor", "fix", "feature", "ux", "teste")
 
 Responda apenas com JSON válido, sem markdown.`,
-    `Analise esta tarefa: "${title}"`
+    `Título: "${title}"${description ? `
+Descrição: ${description}` : ""}`
   );
   const parsed = JSON.parse(text);
   return {
     difficulty: parsed.difficulty ?? "medium",
     estimatedMinutes: parsed.estimatedMinutes ?? 30,
-    reasoning: parsed.reasoning ?? ""
+    reasoning: parsed.reasoning ?? "",
+    improvedTitle: parsed.improvedTitle,
+    improvedDescription: parsed.improvedDescription,
+    suggestedTags: parsed.suggestedTags ?? []
   };
 }
 async function breakIntoSubtasks(apiKey, taskTitle, taskDescription) {
@@ -677,9 +685,9 @@ function getApiKey() {
   return key;
 }
 function registerAiIpc() {
-  electron.ipcMain.handle("ai:suggestTask", async (_, title) => {
+  electron.ipcMain.handle("ai:suggestTask", async (_, title, description) => {
     const apiKey = getApiKey();
-    return suggestTask(apiKey, title);
+    return suggestTask(apiKey, title, description);
   });
   electron.ipcMain.handle("ai:breakIntoSubtasks", async (_, taskTitle, taskDescription) => {
     const apiKey = getApiKey();

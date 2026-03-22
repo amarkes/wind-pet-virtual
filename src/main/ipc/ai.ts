@@ -15,9 +15,9 @@ function getApiKey(): string {
 }
 
 export function registerAiIpc(): void {
-  ipcMain.handle('ai:suggestTask', async (_, title: string) => {
+  ipcMain.handle('ai:suggestTask', async (_, title: string, description?: string) => {
     const apiKey = getApiKey()
-    return ai.suggestTask(apiKey, title)
+    return ai.suggestTask(apiKey, title, description)
   })
 
   ipcMain.handle('ai:breakIntoSubtasks', async (_, taskTitle: string, taskDescription?: string) => {

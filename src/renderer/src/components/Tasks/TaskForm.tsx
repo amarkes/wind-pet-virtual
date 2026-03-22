@@ -1,10 +1,10 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
-import { X, Sparkles, Loader2, Tag } from 'lucide-react'
+import { X, Sparkles, Loader2, Tag, Check, Wand2 } from 'lucide-react'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
 import { useAIStore } from '../../stores/ai.store'
-import type { CreateTaskInput, TaskPriority, TaskDifficulty } from '../../../../shared/types'
+import type { AISuggestion, CreateTaskInput, TaskPriority, TaskDifficulty } from '../../../../shared/types'
 
 function todayYMD() {
   const d = new Date()
@@ -30,18 +30,32 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
   const [tags, setTags]                 = useState<string[]>([])
   const [tagInput, setTagInput]         = useState('')
   const [loading, setLoading]           = useState(false)
-  const [aiReasoning, setAiReasoning]   = useState('')
+  const [suggestion, setSuggestion]     = useState<AISuggestion | null>(null)
 
   const { suggestTask, isLoading: aiLoading } = useAIStore()
 
   async function handleSuggest() {
     if (!title.trim()) return
-    const suggestion = await suggestTask(title.trim())
-    if (suggestion) {
-      setDifficulty(suggestion.difficulty)
-      setEstimated(String(suggestion.estimatedMinutes))
-      setAiReasoning(suggestion.reasoning)
+    const s = await suggestTask(title.trim(), description.trim() || undefined)
+    if (s) {
+      setSuggestion(s)
+      setDifficulty(s.difficulty)
+      setEstimated(String(s.estimatedMinutes))
     }
+  }
+
+  function applyTitle() {
+    if (suggestion?.improvedTitle) setTitle(suggestion.improvedTitle)
+  }
+  function applyDescription() {
+    if (suggestion?.improvedDescription) setDescription(suggestion.improvedDescription)
+  }
+  function applyTag(tag: string) {
+    if (!tags.includes(tag)) setTags((prev) => [...prev, tag])
+  }
+  function applyAllTags() {
+    const newTags = (suggestion?.suggestedTags ?? []).filter((t) => !tags.includes(t))
+    setTags((prev) => [...prev, ...newTags])
   }
 
   function addTag() {
@@ -64,7 +78,6 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-
     setLoading(true)
     await onSubmit({
       title: title.trim(),
@@ -79,6 +92,9 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
     setLoading(false)
   }
 
+  const hasSuggestedTitle = suggestion?.improvedTitle && suggestion.improvedTitle !== title
+  const pendingSuggestedTags = (suggestion?.suggestedTags ?? []).filter((t) => !tags.includes(t))
+
   return (
     <form onSubmit={handleSubmit} className="card p-4 flex flex-col gap-3 animate-slide-up">
       <div className="flex items-center justify-between">
@@ -88,11 +104,12 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         </button>
       </div>
 
+      {/* Title + AI button */}
       <div className="flex gap-2">
         <Input
           placeholder="Título da tarefa..."
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => { setTitle(e.target.value); setSuggestion(null) }}
           autoFocus
           className="flex-1"
         />
@@ -100,7 +117,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
           type="button"
           onClick={handleSuggest}
           disabled={!title.trim() || aiLoading}
-          title="Sugerir dificuldade e tempo com IA"
+          title="Analisar com IA"
           className="flex-shrink-0 px-2.5 py-1.5 rounded-lg border border-primary/30 bg-primary/10
                      text-primary-light text-xs font-medium flex items-center gap-1.5
                      hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -110,10 +127,82 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         </button>
       </div>
 
-      {aiReasoning && (
-        <p className="text-[11px] text-primary-light bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20">
-          💡 {aiReasoning}
-        </p>
+      {/* AI suggestions panel */}
+      {suggestion && (
+        <div className="flex flex-col gap-2 bg-primary/5 border border-primary/20 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-light">
+            <Wand2 size={12} /> Sugestões da IA
+          </div>
+
+          {/* Reasoning */}
+          <p className="text-[11px] text-text-secondary">💡 {suggestion.reasoning}</p>
+
+          {/* Improved title */}
+          {hasSuggestedTitle && (
+            <div className="flex items-start gap-2 bg-bg-card rounded-lg p-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-text-muted font-medium mb-0.5">Título melhorado</p>
+                <p className="text-xs text-text-primary leading-snug">{suggestion.improvedTitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={applyTitle}
+                className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md
+                           bg-primary/15 text-primary-light hover:bg-primary/25 transition-colors text-[11px] font-medium"
+              >
+                <Check size={10} /> Aplicar
+              </button>
+            </div>
+          )}
+
+          {/* Improved description */}
+          {suggestion.improvedDescription && (
+            <div className="flex items-start gap-2 bg-bg-card rounded-lg p-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-text-muted font-medium mb-0.5">Descrição sugerida</p>
+                <p className="text-xs text-text-secondary leading-snug">{suggestion.improvedDescription}</p>
+              </div>
+              <button
+                type="button"
+                onClick={applyDescription}
+                className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md
+                           bg-primary/15 text-primary-light hover:bg-primary/25 transition-colors text-[11px] font-medium"
+              >
+                <Check size={10} /> Aplicar
+              </button>
+            </div>
+          )}
+
+          {/* Suggested tags */}
+          {pendingSuggestedTags.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-text-muted font-medium">Tags sugeridas</p>
+                <button
+                  type="button"
+                  onClick={applyAllTags}
+                  className="text-[10px] text-primary-light hover:text-primary transition-colors font-medium"
+                >
+                  Adicionar todas
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {pendingSuggestedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => applyTag(tag)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md
+                               bg-bg-card border border-bg-border text-[11px] text-text-secondary
+                               hover:border-primary/40 hover:text-primary-light transition-colors"
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <textarea
@@ -144,7 +233,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-text-secondary font-medium">
             Dificuldade
-            {aiReasoning && <span className="ml-1 text-primary-light">✨</span>}
+            {suggestion && <span className="ml-1 text-primary-light">✨</span>}
           </label>
           <select
             value={difficulty}
@@ -160,7 +249,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
 
       <div className="grid grid-cols-2 gap-3">
         <Input
-          label={`Estimativa (min)${aiReasoning ? ' ✨' : ''}`}
+          label={`Estimativa (min)${suggestion ? ' ✨' : ''}`}
           type="number"
           placeholder="ex: 60"
           value={estimated}
@@ -179,7 +268,8 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         <label className="text-xs text-text-secondary font-medium flex items-center gap-1">
           <Tag size={11} /> Tags
         </label>
-        <div className="input-base flex flex-wrap gap-1.5 min-h-[2.25rem] cursor-text"
+        <div
+          className="input-base flex flex-wrap gap-1.5 min-h-[2.25rem] cursor-text"
           onClick={(e) => (e.currentTarget.querySelector('input') as HTMLInputElement)?.focus()}
         >
           {tags.map((tag) => (

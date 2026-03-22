@@ -28,22 +28,36 @@ async function generate(apiKey: string, system: string, prompt: string): Promise
 
 // ── Task Suggestion ────────────────────────────────────────────────────────
 
-export async function suggestTask(apiKey: string, title: string): Promise<AISuggestion> {
+export async function suggestTask(apiKey: string, title: string, description?: string): Promise<AISuggestion> {
   const text = await generate(apiKey,
-    `Você é um assistente de produtividade que analisa títulos de tarefas e sugere:
+    `Você é um assistente de produtividade que analisa tarefas e sugere melhorias.
+Analise o título e a descrição fornecidos e retorne um JSON com:
 - difficulty: "easy" | "medium" | "hard" | "epic"
 - estimatedMinutes: número inteiro positivo
-- reasoning: breve explicação em português (max 1 frase)
+- reasoning: breve explicação da dificuldade em português (max 1 frase)
+- improvedTitle: título melhorado — mais claro, acionável e específico (em português)
+- improvedDescription: descrição melhorada e detalhada (max 2 frases em português); se não houver descrição original, crie uma relevante
+- suggestedTags: array de 2 a 4 tags em minúsculas (exemplos: "bug", "frontend", "backend", "docs", "reunião", "refactor", "fix", "feature", "ux", "teste")
 
 Responda apenas com JSON válido, sem markdown.`,
-    `Analise esta tarefa: "${title}"`,
+    `Título: "${title}"${description ? `\nDescrição: ${description}` : ''}`,
   )
 
-  const parsed = JSON.parse(text) as { difficulty: TaskDifficulty; estimatedMinutes: number; reasoning: string }
+  const parsed = JSON.parse(text) as {
+    difficulty: TaskDifficulty
+    estimatedMinutes: number
+    reasoning: string
+    improvedTitle?: string
+    improvedDescription?: string
+    suggestedTags?: string[]
+  }
   return {
     difficulty: parsed.difficulty ?? 'medium',
     estimatedMinutes: parsed.estimatedMinutes ?? 30,
     reasoning: parsed.reasoning ?? '',
+    improvedTitle: parsed.improvedTitle,
+    improvedDescription: parsed.improvedDescription,
+    suggestedTags: parsed.suggestedTags ?? [],
   }
 }
 
