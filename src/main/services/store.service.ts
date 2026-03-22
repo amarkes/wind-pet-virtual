@@ -31,9 +31,6 @@ const store = new Store<StoreSchema>({
     },
     settings: {
       userName: '',
-      pomodoroMinutes: 25,
-      shortBreakMinutes: 5,
-      longBreakMinutes: 15,
       geminiApiKey: '',
       workingDirectory: '',
       commitAnalysisLimit: 1,

@@ -4,7 +4,6 @@ import Sidebar from './components/Layout/Sidebar'
 import Dashboard from './pages/Dashboard'
 import TasksPage from './pages/TasksPage'
 import NotesPage from './pages/NotesPage'
-import TimerPage from './pages/TimerPage'
 import SettingsPage from './pages/SettingsPage'
 import AuditPage from './pages/AuditPage'
 import CommitPage from './pages/CommitPage'
@@ -17,13 +16,12 @@ import { useTasksStore } from './stores/tasks.store'
 import { useNotesStore } from './stores/notes.store'
 import { useTagColorsStore } from './stores/tagColors.store'
 
-type Page = 'dashboard' | 'tasks' | 'notes' | 'timer' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
 const PAGES: Record<Page, JSX.Element> = {
   dashboard:    <Dashboard />,
   tasks:        <TasksPage />,
   notes:        <NotesPage />,
-  timer:        <TimerPage />,
   settings:     <SettingsPage />,
   audit:        <AuditPage />,
   commits:      <CommitPage />,

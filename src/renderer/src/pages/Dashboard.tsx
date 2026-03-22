@@ -29,7 +29,6 @@ const XP_GUIDE = [
   { action: 'Tarefa épica concluída',   xp: 50,  icon: '👑' },
   { action: 'Tarefa criada',            xp: 5,   icon: '➕' },
   { action: 'Nota criada',              xp: 5,   icon: '📝' },
-  { action: 'Pomodoro concluído',       xp: 15,  icon: '🍅' },
   { action: 'Streak diário',            xp: 25,  icon: '🔆' },
 ]
 

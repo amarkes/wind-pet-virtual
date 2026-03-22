@@ -145,7 +145,7 @@ export default function FocusPage() {
         <AlertTriangle size={16} className="text-accent-amber flex-shrink-0 mt-0.5" />
         <div className="text-sm text-text-secondary space-y-1">
           <p className="font-medium text-text-primary">Dica de produtividade</p>
-          <p>O app monitora o tempo que você passa focado na janela. Use o timer Pomodoro para maximizar sessões de foco e evite trocar de janela com frequência.</p>
+          <p>O app monitora o tempo que você passa focado na janela. Evite trocar de janela com frequência para maximizar suas sessões de foco.</p>
         </div>
       </div>
     </div>

@@ -9,9 +9,6 @@ export default function SettingsPage() {
   const { pet } = usePetStore()
   const [settings, setSettings] = useState<AppSettings>({
     userName: '',
-    pomodoroMinutes: 25,
-    shortBreakMinutes: 5,
-    longBreakMinutes: 15,
     geminiApiKey: '',
     workingDirectory: '',
     commitAnalysisLimit: 1,
@@ -134,37 +131,6 @@ export default function SettingsPage() {
           <p className="text-[10px] text-text-muted">
             Padrão 1 (último commit). Aumente para analisar mais — cada commit adicional consome mais tokens.
           </p>
-        </div>
-      </section>
-
-      {/* Pomodoro */}
-      <section className="card p-5 flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-text-secondary">Pomodoro</h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Input
-            label="Foco (min)"
-            type="number"
-            min="1"
-            max="120"
-            value={settings.pomodoroMinutes}
-            onChange={(e) => set('pomodoroMinutes', parseInt(e.target.value))}
-          />
-          <Input
-            label="Pausa curta"
-            type="number"
-            min="1"
-            max="30"
-            value={settings.shortBreakMinutes}
-            onChange={(e) => set('shortBreakMinutes', parseInt(e.target.value))}
-          />
-          <Input
-            label="Pausa longa"
-            type="number"
-            min="1"
-            max="60"
-            value={settings.longBreakMinutes}
-            onChange={(e) => set('longBreakMinutes', parseInt(e.target.value))}
-          />
         </div>
       </section>
 

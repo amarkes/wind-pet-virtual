@@ -80,9 +80,6 @@ export interface PetStateWithProgress extends PetState {
 
 export interface AppSettings {
   userName: string
-  pomodoroMinutes: number
-  shortBreakMinutes: number
-  longBreakMinutes: number
   geminiApiKey?: string
   workingDirectory?: string
   commitAnalysisLimit: number
@@ -128,7 +125,6 @@ export interface DailyReview {
   tasksCompleted: number
   tasksCreated: number
   tasksOverdue: number
-  pomodoroSessions: number
   score: number
   summary: string
   tips: string[]

@@ -213,7 +213,6 @@ Responda apenas com JSON válido sem markdown:
     tasksCompleted: completed.length,
     tasksCreated: todayTasks.length,
     tasksOverdue: overdue.length,
-    pomodoroSessions: 0,
   }
 }
 

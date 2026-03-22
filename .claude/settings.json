@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm update:*)",
-      "Bash(node -e \"const {GoogleGenerativeAI} = require\\(''''@google/generative-ai''''\\); console.log\\(''''version ok''''\\)\")"
+      "Bash(node -e \"const {GoogleGenerativeAI} = require\\(''''@google/generative-ai''''\\); console.log\\(''''version ok''''\\)\")",
+      "Bash(node -e \"console.log\\(require\\(''/Users/antonio.ma.neto/random/pet/package.json''\\).version\\)\")"
     ]
   }
 }

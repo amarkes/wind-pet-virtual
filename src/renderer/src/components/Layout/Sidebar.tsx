@@ -1,7 +1,7 @@
-import { LayoutDashboard, CheckSquare, FileText, Timer, Settings, History, GitCommit, BarChart2, Focus, Trophy } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, FileText, Settings, History, GitCommit, BarChart2, Focus, Trophy } from 'lucide-react'
 import Pet from '../Pet/Pet'
 
-type Page = 'dashboard' | 'tasks' | 'notes' | 'timer' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
 interface Props {
   current: Page
@@ -12,7 +12,6 @@ const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard; sectio
   { id: 'dashboard',    label: 'Dashboard',   icon: LayoutDashboard, section: 'main' },
   { id: 'tasks',        label: 'Tarefas',     icon: CheckSquare,     section: 'main' },
   { id: 'notes',        label: 'Notas',       icon: FileText,        section: 'main' },
-  { id: 'timer',        label: 'Timer',       icon: Timer,           section: 'main' },
   { id: 'commits',      label: 'Commits',     icon: GitCommit,       section: 'v2'   },
   { id: 'review',       label: 'Review',      icon: BarChart2,       section: 'v2'   },
   { id: 'audit',        label: 'Auditoria',   icon: History,         section: 'v2'   },
@@ -62,7 +61,7 @@ export default function Sidebar({ current, onChange }: Props) {
 
       {/* Footer */}
       <div className="p-3 border-t border-bg-border">
-        <p className="text-[10px] text-text-muted text-center">ClearUp v0.3.0</p>
+        <p className="text-[10px] text-text-muted text-center">ClearUp v{__APP_VERSION__}</p>
       </div>
     </aside>
   )
@@ -79,7 +78,7 @@ function NavButton({
 }) {
   return (
     <button
-      onClick={() => onChange(id)}
+      onClick={() => onChange(id as Page)}
       className={`
         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left
         transition-all duration-150
