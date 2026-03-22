@@ -29,6 +29,12 @@ const api = {
     get: () => electron.ipcRenderer.invoke("settings:get"),
     update: (data) => electron.ipcRenderer.invoke("settings:update", data)
   },
+  projects: {
+    getAll: () => electron.ipcRenderer.invoke("projects:getAll"),
+    create: (data) => electron.ipcRenderer.invoke("projects:create", data),
+    update: (id, data) => electron.ipcRenderer.invoke("projects:update", id, data),
+    delete: (id) => electron.ipcRenderer.invoke("projects:delete", id)
+  },
   audit: {
     getAll: () => electron.ipcRenderer.invoke("audit:getAll")
   },

@@ -4,6 +4,7 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
 import TagChip from '../ui/TagChip'
+import { useProjectsStore } from '../../stores/projects.store'
 import type { Task, TaskPriority, TaskDifficulty } from '../../../../shared/types'
 
 function todayYMD() {
@@ -27,7 +28,10 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
   const [dueTime, setDueTime]         = useState(task.dueDate?.includes('T') ? task.dueDate.split('T')[1].slice(0, 5) : '18:00')
   const [tags, setTags]               = useState<string[]>(task.tags ?? [])
   const [tagInput, setTagInput]       = useState('')
+  const [projectId, setProjectId]     = useState<string>(task.projectId ?? '')
   const [loading, setLoading]         = useState(false)
+
+  const { projects } = useProjectsStore()
 
   function addTag() {
     const trimmed = tagInput.trim().toLowerCase()
@@ -59,6 +63,7 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
       estimatedMinutes: estimated ? parseInt(estimated) : undefined,
       dueDate: dueDate ? `${dueDate}T${dueTime}` : undefined,
       tags,
+      projectId: projectId || undefined,
     })
     setLoading(false)
   }
@@ -175,6 +180,23 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
         </div>
         <p className="text-[10px] text-text-muted">Enter ou vírgula para adicionar</p>
       </div>
+
+      {/* Project */}
+      {projects.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-text-secondary font-medium">Projeto</label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="input-base"
+          >
+            <option value="">Sem projeto</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

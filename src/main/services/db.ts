@@ -102,7 +102,21 @@ function initSchema(): void {
       tag   TEXT PRIMARY KEY,
       color TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS projects (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT,
+      color       TEXT NOT NULL DEFAULT '#6366f1',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
   `)
+
+  // Add project_id column to tasks if missing (schema evolution)
+  const taskCols = (_db!.pragma('table_info(tasks)') as { name: string }[]).map((c) => c.name)
+  if (!taskCols.includes('project_id')) {
+    _db!.exec('ALTER TABLE tasks ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL')
+  }
 
   if (!_db!.prepare('SELECT 1 FROM pet WHERE id = 1').get()) {
     _db!.prepare(

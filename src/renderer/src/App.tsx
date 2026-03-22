@@ -10,17 +10,20 @@ import CommitPage from './pages/CommitPage'
 import DailyReviewPage from './pages/DailyReviewPage'
 import FocusPage from './pages/FocusPage'
 import AchievementsPage from './pages/AchievementsPage'
+import ProjectsPage from './pages/ProjectsPage'
 import AchievementToast from './components/AchievementToast'
 import { usePetStore } from './stores/pet.store'
 import { useTasksStore } from './stores/tasks.store'
 import { useNotesStore } from './stores/notes.store'
 import { useTagColorsStore } from './stores/tagColors.store'
+import { useProjectsStore } from './stores/projects.store'
 
-type Page = 'dashboard' | 'tasks' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
 const PAGES: Record<Page, JSX.Element> = {
   dashboard:    <Dashboard />,
   tasks:        <TasksPage />,
+  projects:     <ProjectsPage />,
   notes:        <NotesPage />,
   settings:     <SettingsPage />,
   audit:        <AuditPage />,
@@ -36,9 +39,10 @@ export default function App() {
   const { load: loadTasks }      = useTasksStore()
   const { load: loadNotes }      = useNotesStore()
   const { load: loadTagColors }  = useTagColorsStore()
+  const { load: loadProjects }   = useProjectsStore()
 
   useEffect(() => {
-    Promise.all([loadPet(), loadTasks(), loadNotes(), loadTagColors()])
+    Promise.all([loadPet(), loadTasks(), loadNotes(), loadTagColors(), loadProjects()])
   }, [])
 
   const isNotes = page === 'notes'

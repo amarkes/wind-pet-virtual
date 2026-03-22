@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { PetMood, PetStateWithProgress } from '../../../shared/types'
-import { useTasksStore } from './tasks.store'
+import { UNASSIGNED_PROJECT_FILTER, useTasksStore } from './tasks.store'
 
 interface PetStore {
   pet:             PetStateWithProgress | null
@@ -13,7 +13,7 @@ interface PetStore {
   setMood:             (mood: PetMood) => Promise<void>
   setMessage:          (msg: string) => void
   triggerMoodTemporary:(mood: PetMood, durationMs: number) => void
-  refreshMessage:      () => Promise<void>
+  refreshMessage:      (force?: boolean) => Promise<void>
   updateWeight:        (score: number) => Promise<void>
 }
 
@@ -31,6 +31,17 @@ const MOOD_MESSAGES: Record<PetMood, string[]> = {
 function randomMessage(mood: PetMood): string {
   const msgs = MOOD_MESSAGES[mood]
   return msgs[Math.floor(Math.random() * msgs.length)]
+}
+
+function getScopedTasks() {
+  const { tasks, projectFilter } = useTasksStore.getState()
+
+  if (projectFilter === null) return []
+  if (projectFilter === UNASSIGNED_PROJECT_FILTER) {
+    return tasks.filter((t) => !t.projectId)
+  }
+
+  return tasks.filter((t) => t.projectId === projectFilter)
 }
 
 // Minimum ms between AI speak calls (90 seconds)
@@ -80,17 +91,26 @@ export const usePetStore = create<PetStore>((set, get) => ({
     setTimeout(() => setMood('idle'), durationMs)
   },
 
-  refreshMessage: async () => {
+  refreshMessage: async (force = false) => {
     const { pet, lastAiSpeakAt } = get()
     if (!pet) return
 
     const now = Date.now()
-    if (now - lastAiSpeakAt < AI_SPEAK_COOLDOWN) return
+    if (!force && now - lastAiSpeakAt < AI_SPEAK_COOLDOWN) return
+
+    const tasks = getScopedTasks()
+    const { projectFilter } = useTasksStore.getState()
+    if (projectFilter === null) {
+      set({
+        message: 'Escolha um projeto para eu acompanhar as tarefas.',
+        lastAiSpeakAt: force ? lastAiSpeakAt : now,
+      })
+      return
+    }
 
     set({ lastAiSpeakAt: now })
 
-    // Gather real task context so the AI can comment meaningfully
-    const tasks = useTasksStore.getState().tasks
+    // Gather scoped task context so the AI comments on the active project only
     const todayStr = new Date().toDateString()
     const completedToday  = tasks.filter((t) =>
       t.status === 'completed' && t.completedAt &&

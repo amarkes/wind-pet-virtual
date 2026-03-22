@@ -4,6 +4,7 @@ import { usePetStore } from './pet.store'
 
 export type TaskSort = 'created' | 'priority' | 'dueDate'
 export type TaskDueDateFilter = 'overdue' | 'today' | 'week' | null
+export const UNASSIGNED_PROJECT_FILTER = '__unassigned__'
 
 interface TasksStore {
   tasks: Task[]
@@ -12,6 +13,7 @@ interface TasksStore {
   sort: TaskSort
   priorityFilter: TaskPriority[]
   dueDateFilter: TaskDueDateFilter
+  projectFilter: string | null
   isLoading: boolean
 
   load: () => Promise<void>
@@ -28,6 +30,7 @@ interface TasksStore {
   setSort: (sort: TaskSort) => void
   setPriorityFilter: (priorities: TaskPriority[]) => void
   setDueDateFilter: (filter: TaskDueDateFilter) => void
+  setProjectFilter: (projectId: string | null) => void
 
   getFiltered: () => Task[]
   getTodayCount: () => { total: number; completed: number }
@@ -42,6 +45,7 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   sort: 'created',
   priorityFilter: [],
   dueDateFilter: null,
+  projectFilter: null,
   isLoading: false,
 
   load: async () => {
@@ -135,10 +139,16 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   setSort: (sort) => set({ sort }),
   setPriorityFilter: (priorities) => set({ priorityFilter: priorities }),
   setDueDateFilter: (filter) => set({ dueDateFilter: filter }),
+  setProjectFilter: (projectId) => set({ projectFilter: projectId }),
 
   getFiltered: () => {
-    const { tasks, filter, search, sort, priorityFilter, dueDateFilter } = get()
-    let result = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter)
+    const { tasks, filter, search, sort, priorityFilter, dueDateFilter, projectFilter } = get()
+    if (projectFilter === null) return []
+
+    let result = projectFilter === UNASSIGNED_PROJECT_FILTER
+      ? tasks.filter((t) => !t.projectId)
+      : tasks.filter((t) => t.projectId === projectFilter)
+    result = filter === 'all' ? result : result.filter((t) => t.status === filter)
 
     if (search.trim()) {
       const q = search.toLowerCase()

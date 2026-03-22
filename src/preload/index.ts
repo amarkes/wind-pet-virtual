@@ -30,6 +30,12 @@ const api: Omit<WindowApi, 'platform'> = {
     get:    ()      => ipcRenderer.invoke('settings:get'),
     update: (data)  => ipcRenderer.invoke('settings:update', data),
   },
+  projects: {
+    getAll:  ()             => ipcRenderer.invoke('projects:getAll'),
+    create:  (data)         => ipcRenderer.invoke('projects:create', data),
+    update:  (id, data)     => ipcRenderer.invoke('projects:update', id, data),
+    delete:  (id)           => ipcRenderer.invoke('projects:delete', id),
+  },
   audit: {
     getAll: () => ipcRenderer.invoke('audit:getAll'),
   },

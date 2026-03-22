@@ -117,7 +117,19 @@ function initSchema() {
       tag   TEXT PRIMARY KEY,
       color TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS projects (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT,
+      color       TEXT NOT NULL DEFAULT '#6366f1',
+      created_at  TEXT NOT NULL,
+      updated_at  TEXT NOT NULL
+    );
   `);
+  const taskCols = _db.pragma("table_info(tasks)").map((c) => c.name);
+  if (!taskCols.includes("project_id")) {
+    _db.exec("ALTER TABLE tasks ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL");
+  }
   if (!_db.prepare("SELECT 1 FROM pet WHERE id = 1").get()) {
     _db.prepare(
       "INSERT INTO pet (id,name,mood,xp,level,streak,last_active,weight) VALUES (1,?,?,0,1,0,?,1.0)"
@@ -237,10 +249,21 @@ function toTask(r) {
     tags: JSON.parse(r.tags || "[]"),
     estimatedMinutes: r.estimated_minutes,
     dueDate: r.due_date,
+    projectId: r.project_id,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     completedAt: r.completed_at,
     subtasks: JSON.parse(r.subtasks || "[]")
+  };
+}
+function toProject(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    color: r.color,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
   };
 }
 function toNote(r) {
@@ -281,8 +304,8 @@ function createTask(data) {
   const id = crypto.randomUUID();
   const now = (/* @__PURE__ */ new Date()).toISOString();
   db.prepare(`
-    INSERT INTO tasks (id,title,description,status,priority,difficulty,tags,estimated_minutes,due_date,created_at,updated_at,completed_at,subtasks)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO tasks (id,title,description,status,priority,difficulty,tags,estimated_minutes,due_date,project_id,created_at,updated_at,completed_at,subtasks)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id,
     data.title,
@@ -293,6 +316,7 @@ function createTask(data) {
     JSON.stringify(data.tags ?? []),
     data.estimatedMinutes ?? null,
     data.dueDate ?? null,
+    data.projectId ?? null,
     now,
     now,
     data.completedAt ?? null,
@@ -307,7 +331,7 @@ function updateTask(id, data) {
   const t = { ...toTask(row), ...data, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
   db.prepare(`
     UPDATE tasks SET title=?,description=?,status=?,priority=?,difficulty=?,tags=?,
-    estimated_minutes=?,due_date=?,updated_at=?,completed_at=?,subtasks=? WHERE id=?
+    estimated_minutes=?,due_date=?,project_id=?,updated_at=?,completed_at=?,subtasks=? WHERE id=?
   `).run(
     t.title,
     t.description ?? null,
@@ -317,6 +341,7 @@ function updateTask(id, data) {
     JSON.stringify(t.tags ?? []),
     t.estimatedMinutes ?? null,
     t.dueDate ?? null,
+    t.projectId ?? null,
     t.updatedAt,
     t.completedAt ?? null,
     JSON.stringify(t.subtasks ?? []),
@@ -506,6 +531,31 @@ function unlockAchievement(id, meta) {
 function isAchievementUnlocked(id) {
   const row = getDb().prepare("SELECT unlocked_at FROM achievements WHERE id = ?").get(id);
   return !!row?.unlocked_at;
+}
+function getProjects() {
+  return getDb().prepare("SELECT * FROM projects ORDER BY created_at ASC").all().map(toProject);
+}
+function createProject(data) {
+  const db = getDb();
+  const id = crypto.randomUUID();
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  db.prepare(
+    "INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)"
+  ).run(id, data.name, data.description ?? null, data.color, now, now);
+  return toProject(db.prepare("SELECT * FROM projects WHERE id = ?").get(id));
+}
+function updateProject(id, data) {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id);
+  if (!row) return null;
+  const p = { ...toProject(row), ...data, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  db.prepare(
+    "UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?"
+  ).run(p.name, p.description ?? null, p.color, p.updatedAt, id);
+  return p;
+}
+function deleteProject(id) {
+  return getDb().prepare("DELETE FROM projects WHERE id = ?").run(id).changes > 0;
 }
 const XP_REWARDS = {
   task_easy: 10,
@@ -1161,6 +1211,12 @@ function registerSettingsIpc() {
   electron.ipcMain.handle("tagColors:get", () => getTagColors());
   electron.ipcMain.handle("tagColors:set", (_, colors) => setTagColors(colors));
 }
+function registerProjectsIpc() {
+  electron.ipcMain.handle("projects:getAll", () => getProjects());
+  electron.ipcMain.handle("projects:create", (_e, data) => createProject(data));
+  electron.ipcMain.handle("projects:update", (_e, id, data) => updateProject(id, data));
+  electron.ipcMain.handle("projects:delete", (_e, id) => deleteProject(id));
+}
 function registerAllIpc() {
   registerTasksIpc();
   registerNotesIpc();
@@ -1169,6 +1225,7 @@ function registerAllIpc() {
   registerFocusIpc();
   registerAchievementsIpc();
   registerSettingsIpc();
+  registerProjectsIpc();
 }
 electron.app.setName("ClearUp");
 let mainWindow = null;

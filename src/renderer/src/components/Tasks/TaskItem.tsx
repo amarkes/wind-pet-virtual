@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Check, Trash2, ChevronDown, ChevronUp, Clock,
   Pencil, XCircle, Sparkles, Loader2, CheckSquare, Square, X,
-  CalendarClock,
+  CalendarClock, Folder,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task, Subtask } from '../../../../shared/types'
@@ -10,6 +10,7 @@ import TaskEditModal from './TaskEditModal'
 import TagChip from '../ui/TagChip'
 import { useAIStore } from '../../stores/ai.store'
 import { useTasksStore } from '../../stores/tasks.store'
+import { useProjectsStore } from '../../stores/projects.store'
 
 interface Props {
   task: Task
@@ -60,6 +61,8 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
 
   const { breakIntoSubtasks, isLoading: aiLoading } = useAIStore()
   const { addSubtask, toggleSubtask, removeSubtask } = useTasksStore()
+  const { getById: getProject } = useProjectsStore()
+  const project = task.projectId ? getProject(task.projectId) : undefined
 
   const dueDateStatus = task.dueDate ? getDueDateStatus(task.dueDate, task.status) : null
 
@@ -138,6 +141,15 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {project && (
+              <div
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium"
+                style={{ color: project.color, backgroundColor: project.color + '18', borderColor: project.color + '44' }}
+              >
+                <Folder size={10} />
+                {project.name}
+              </div>
+            )}
             {task.estimatedMinutes && (
               <div className="flex items-center gap-1">
                 <Clock size={11} className="text-text-muted" />

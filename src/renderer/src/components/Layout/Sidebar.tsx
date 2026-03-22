@@ -1,7 +1,7 @@
-import { LayoutDashboard, CheckSquare, FileText, Settings, History, GitCommit, BarChart2, Focus, Trophy } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, FileText, Settings, History, GitCommit, BarChart2, Focus, Trophy, Folder } from 'lucide-react'
 import Pet from '../Pet/Pet'
 
-type Page = 'dashboard' | 'tasks' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
 
 interface Props {
   current: Page
@@ -11,6 +11,7 @@ interface Props {
 const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard; section: 'main' | 'v2' | 'v3' }[] = [
   { id: 'dashboard',    label: 'Dashboard',   icon: LayoutDashboard, section: 'main' },
   { id: 'tasks',        label: 'Tarefas',     icon: CheckSquare,     section: 'main' },
+  { id: 'projects',     label: 'Projetos',    icon: Folder,          section: 'main' },
   { id: 'notes',        label: 'Notas',       icon: FileText,        section: 'main' },
   { id: 'commits',      label: 'Commits',     icon: GitCommit,       section: 'v2'   },
   { id: 'review',       label: 'Review',      icon: BarChart2,       section: 'v2'   },

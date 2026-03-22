@@ -5,6 +5,7 @@ import { registerAiIpc } from './ai'
 import { registerFocusIpc } from './focus'
 import { registerAchievementsIpc } from './achievements'
 import { registerSettingsIpc } from './settings'
+import { registerProjectsIpc } from './projects'
 
 export function registerAllIpc(): void {
   registerTasksIpc()
@@ -14,4 +15,5 @@ export function registerAllIpc(): void {
   registerFocusIpc()
   registerAchievementsIpc()
   registerSettingsIpc()
+  registerProjectsIpc()
 }

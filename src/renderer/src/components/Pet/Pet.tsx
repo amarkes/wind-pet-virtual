@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePetStore } from '../../stores/pet.store'
+import { useTasksStore } from '../../stores/tasks.store'
 import PetSprite from './PetSprite'
 
 // Level 1 (bebê) → 55px … Level 8 (Lendário) → 135px
@@ -29,6 +30,7 @@ const IDLE_REFRESH_MS = 3 * 60 * 1000
 
 export default function Pet() {
   const { pet, message, refreshMessage, triggerMoodTemporary } = usePetStore()
+  const projectFilter = useTasksStore((state) => state.projectFilter)
   const mood       = pet?.mood ?? 'idle'
   const spriteSize = petSizeForLevel(pet?.level ?? 1)
 
@@ -40,6 +42,12 @@ export default function Pet() {
     }, IDLE_REFRESH_MS)
     return () => clearInterval(id)
   }, [refreshMessage])
+
+  useEffect(() => {
+    if (pet) {
+      refreshMessage(true)
+    }
+  }, [pet, projectFilter, refreshMessage])
 
   function handlePetClick() {
     if (mood !== 'dancing') triggerMoodTemporary('dancing', 6000)

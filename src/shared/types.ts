@@ -1,3 +1,16 @@
+// ── Project ───────────────────────────────────────────────────────────────
+
+export interface Project {
+  id: string
+  name: string
+  description?: string
+  color: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
+
 // ── Audit Log ─────────────────────────────────────────────────────────────
 
 export type AuditAction = 'created' | 'updated' | 'completed' | 'cancelled' | 'deleted'
@@ -33,6 +46,7 @@ export interface Task {
   tags: string[]
   estimatedMinutes?: number
   dueDate?: string
+  projectId?: string
   createdAt: string
   updatedAt: string
   completedAt?: string
@@ -202,6 +216,12 @@ export interface WindowApi {
   settings: {
     get: () => Promise<AppSettings>
     update: (data: Partial<AppSettings>) => Promise<AppSettings>
+  }
+  projects: {
+    getAll: () => Promise<Project[]>
+    create: (data: CreateProjectInput) => Promise<Project>
+    update: (id: string, data: Partial<Project>) => Promise<Project | null>
+    delete: (id: string) => Promise<boolean>
   }
   audit: {
     getAll: () => Promise<AuditLog[]>

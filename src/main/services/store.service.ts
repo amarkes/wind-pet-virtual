@@ -3,6 +3,7 @@ import { getDb } from './db'
 import type {
   Task, Note, PetState, AppSettings, AuditLog, AuditAction,
   Subtask, FocusSession, DayFocusSummary, Achievement, AchievementId,
+  Project, CreateProjectInput,
 } from '../../shared/types'
 
 // ── Row mappers ────────────────────────────────────────────────────────────
@@ -20,10 +21,22 @@ function toTask(r: Row): Task {
     tags:             JSON.parse(r.tags as string || '[]'),
     estimatedMinutes: r.estimated_minutes as number | undefined,
     dueDate:          r.due_date as string | undefined,
+    projectId:        r.project_id as string | undefined,
     createdAt:        r.created_at as string,
     updatedAt:        r.updated_at as string,
     completedAt:      r.completed_at as string | undefined,
     subtasks:         JSON.parse(r.subtasks as string || '[]'),
+  }
+}
+
+function toProject(r: Row): Project {
+  return {
+    id:          r.id as string,
+    name:        r.name as string,
+    description: r.description as string | undefined,
+    color:       r.color as string,
+    createdAt:   r.created_at as string,
+    updatedAt:   r.updated_at as string,
   }
 }
 
@@ -71,11 +84,11 @@ export function createTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): 
   const id  = randomUUID()
   const now = new Date().toISOString()
   db.prepare(`
-    INSERT INTO tasks (id,title,description,status,priority,difficulty,tags,estimated_minutes,due_date,created_at,updated_at,completed_at,subtasks)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT INTO tasks (id,title,description,status,priority,difficulty,tags,estimated_minutes,due_date,project_id,created_at,updated_at,completed_at,subtasks)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(id, data.title, data.description ?? null, data.status, data.priority, data.difficulty,
     JSON.stringify(data.tags ?? []), data.estimatedMinutes ?? null, data.dueDate ?? null,
-    now, now, data.completedAt ?? null, JSON.stringify(data.subtasks ?? []))
+    data.projectId ?? null, now, now, data.completedAt ?? null, JSON.stringify(data.subtasks ?? []))
   return toTask(db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row)
 }
 
@@ -86,10 +99,10 @@ export function updateTask(id: string, data: Partial<Task>): Task | null {
   const t   = { ...toTask(row), ...data, updatedAt: new Date().toISOString() }
   db.prepare(`
     UPDATE tasks SET title=?,description=?,status=?,priority=?,difficulty=?,tags=?,
-    estimated_minutes=?,due_date=?,updated_at=?,completed_at=?,subtasks=? WHERE id=?
+    estimated_minutes=?,due_date=?,project_id=?,updated_at=?,completed_at=?,subtasks=? WHERE id=?
   `).run(t.title, t.description ?? null, t.status, t.priority, t.difficulty,
     JSON.stringify(t.tags ?? []), t.estimatedMinutes ?? null, t.dueDate ?? null,
-    t.updatedAt, t.completedAt ?? null, JSON.stringify(t.subtasks ?? []), id)
+    t.projectId ?? null, t.updatedAt, t.completedAt ?? null, JSON.stringify(t.subtasks ?? []), id)
   return t
 }
 
@@ -312,4 +325,35 @@ export function unlockAchievement(id: AchievementId, meta: Omit<Achievement, 'id
 export function isAchievementUnlocked(id: AchievementId): boolean {
   const row = getDb().prepare('SELECT unlocked_at FROM achievements WHERE id = ?').get(id) as { unlocked_at: string | null } | undefined
   return !!row?.unlocked_at
+}
+
+// ── Projects ─────────────────────────────────────────────────────────────────
+
+export function getProjects(): Project[] {
+  return (getDb().prepare('SELECT * FROM projects ORDER BY created_at ASC').all() as Row[]).map(toProject)
+}
+
+export function createProject(data: CreateProjectInput): Project {
+  const db  = getDb()
+  const id  = randomUUID()
+  const now = new Date().toISOString()
+  db.prepare(
+    'INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)'
+  ).run(id, data.name, data.description ?? null, data.color, now, now)
+  return toProject(db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row)
+}
+
+export function updateProject(id: string, data: Partial<Project>): Project | null {
+  const db  = getDb()
+  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row | undefined
+  if (!row) return null
+  const p = { ...toProject(row), ...data, updatedAt: new Date().toISOString() }
+  db.prepare(
+    'UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?'
+  ).run(p.name, p.description ?? null, p.color, p.updatedAt, id)
+  return p
+}
+
+export function deleteProject(id: string): boolean {
+  return getDb().prepare('DELETE FROM projects WHERE id = ?').run(id).changes > 0
 }

@@ -5,6 +5,7 @@ import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
 import TagChip from '../ui/TagChip'
 import { useAIStore } from '../../stores/ai.store'
+import { useProjectsStore } from '../../stores/projects.store'
 import type { AISuggestion, CreateTaskInput, TaskPriority, TaskDifficulty } from '../../../../shared/types'
 
 function todayYMD() {
@@ -15,13 +16,15 @@ function todayYMD() {
 interface Props {
   onSubmit: (data: CreateTaskInput) => Promise<void>
   onCancel: () => void
+  fixedProjectId?: string
+  lockProject?: boolean
 }
 
 const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
   easy: 'Fácil', medium: 'Média', hard: 'Difícil', epic: 'Épica',
 }
 
-export default function TaskForm({ onSubmit, onCancel }: Props) {
+export default function TaskForm({ onSubmit, onCancel, fixedProjectId, lockProject = false }: Props) {
   const [title, setTitle]               = useState('')
   const [description, setDescription]   = useState('')
   const [priority, setPriority]         = useState<TaskPriority>('medium')
@@ -31,10 +34,12 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
   const [dueTime, setDueTime]           = useState('18:00')
   const [tags, setTags]                 = useState<string[]>([])
   const [tagInput, setTagInput]         = useState('')
+  const [projectId, setProjectId]       = useState<string>(fixedProjectId ?? '')
   const [loading, setLoading]           = useState(false)
   const [suggestion, setSuggestion]     = useState<AISuggestion | null>(null)
 
   const { suggestTask, isLoading: aiLoading } = useAIStore()
+  const { projects } = useProjectsStore()
 
   async function handleSuggest() {
     if (!title.trim()) return
@@ -90,6 +95,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
       tags,
       estimatedMinutes: estimated ? parseInt(estimated) : undefined,
       dueDate: dueDate ? `${dueDate}T${dueTime}` : undefined,
+      projectId: (lockProject ? fixedProjectId : (fixedProjectId ?? projectId)) || undefined,
     })
     setLoading(false)
   }
@@ -307,6 +313,23 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         </div>
         <p className="text-[10px] text-text-muted">Enter ou vírgula para adicionar</p>
       </div>
+
+      {/* Project */}
+      {projects.length > 0 && !lockProject && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-text-secondary font-medium">Projeto</label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="input-base"
+          >
+            <option value="">Sem projeto</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" size="sm" type="button" onClick={onCancel}>

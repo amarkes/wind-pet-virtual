@@ -7,12 +7,13 @@ import { useDroppable, useDraggable } from '@dnd-kit/core'
 import {
   CalendarClock, Clock, GripVertical,
   ChevronDown, ChevronUp, Pencil, Trash2, XCircle,
-  CheckSquare, Square, X, Sparkles, Loader2, AlertTriangle,
+  CheckSquare, Square, X, Sparkles, Loader2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useTasksStore } from '../../stores/tasks.store'
+import { UNASSIGNED_PROJECT_FILTER, useTasksStore } from '../../stores/tasks.store'
 import { useAIStore } from '../../stores/ai.store'
 import TaskEditModal from './TaskEditModal'
+import TaskConfirmModal from './TaskConfirmModal'
 import TagChip from '../ui/TagChip'
 import type { Task, TaskStatus, Subtask } from '../../../../shared/types'
 
@@ -51,37 +52,6 @@ function getDueDateBadge(dueDate: string, status: TaskStatus) {
     : diff === 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
     : 'text-text-muted bg-bg-border/30 border-bg-border'
   return { label, color }
-}
-
-// ── Inline confirmation ────────────────────────────────────────────────────
-
-function ConfirmBar({
-  message, confirmLabel, confirmClass, onConfirm, onCancel,
-}: {
-  message: string
-  confirmLabel: string
-  confirmClass: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary/60 border-t border-bg-border/50 rounded-b-xl">
-      <AlertTriangle size={11} className="text-accent-amber flex-shrink-0" />
-      <span className="text-[11px] text-text-secondary flex-1">{message}</span>
-      <button
-        onClick={onCancel}
-        className="text-[11px] px-2 py-0.5 rounded btn-ghost text-text-muted"
-      >
-        Não
-      </button>
-      <button
-        onClick={onConfirm}
-        className={`text-[11px] px-2 py-0.5 rounded font-medium ${confirmClass}`}
-      >
-        {confirmLabel}
-      </button>
-    </div>
-  )
 }
 
 // ── Draggable card ─────────────────────────────────────────────────────────
@@ -155,59 +125,55 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
         <div className="flex-1" />
 
         {/* Action buttons */}
-        {!confirm && (
-          <>
-            {hasExpandable && !editing && (
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="btn-ghost p-1 rounded"
-                title={expanded ? 'Recolher' : 'Expandir'}
-              >
-                {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              </button>
-            )}
+        {hasExpandable && !editing && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="btn-ghost p-1 rounded"
+            title={expanded ? 'Recolher' : 'Expandir'}
+          >
+            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        )}
 
-            {editable && task.difficulty === 'epic' && !editing && (
-              <button
-                onClick={handleBreakDown}
-                disabled={aiLoading || breakingDown}
-                className="btn-ghost p-1 rounded text-primary-light hover:text-primary disabled:opacity-40"
-                title="Quebrar em subtarefas (IA)"
-              >
-                {breakingDown ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-              </button>
-            )}
+        {editable && task.difficulty === 'epic' && !editing && (
+          <button
+            onClick={handleBreakDown}
+            disabled={aiLoading || breakingDown}
+            className="btn-ghost p-1 rounded text-primary-light hover:text-primary disabled:opacity-40"
+            title="Quebrar em subtarefas (IA)"
+          >
+            {breakingDown ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+          </button>
+        )}
 
-            {editable && !editing && (
-              <button
-                onClick={() => { setEditing(true); setExpanded(false) }}
-                className="btn-ghost p-1 rounded"
-                title="Editar tarefa"
-              >
-                <Pencil size={12} />
-              </button>
-            )}
+        {editable && !editing && (
+          <button
+            onClick={() => { setEditing(true); setExpanded(false) }}
+            className="btn-ghost p-1 rounded"
+            title="Editar tarefa"
+          >
+            <Pencil size={12} />
+          </button>
+        )}
 
-            {editable && !editing && (
-              <button
-                onClick={() => setConfirm('cancel')}
-                className="btn-ghost p-1 rounded text-text-muted hover:text-accent-amber"
-                title="Cancelar tarefa"
-              >
-                <XCircle size={12} />
-              </button>
-            )}
+        {editable && !editing && (
+          <button
+            onClick={() => setConfirm('cancel')}
+            className="btn-ghost p-1 rounded text-text-muted hover:text-accent-amber"
+            title="Cancelar tarefa"
+          >
+            <XCircle size={12} />
+          </button>
+        )}
 
-            {!editing && (
-              <button
-                onClick={() => setConfirm('delete')}
-                className="btn-danger p-1 rounded"
-                title="Deletar tarefa"
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
-          </>
+        {!editing && (
+          <button
+            onClick={() => setConfirm('delete')}
+            className="btn-danger p-1 rounded"
+            title="Deletar tarefa"
+          >
+            <Trash2 size={12} />
+          </button>
         )}
       </div>
 
@@ -327,41 +293,25 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
         onClose={() => setEditing(false)}
       />
 
-      {/* ── Confirmation bars ── */}
-      <AnimatePresence>
-        {confirm === 'delete' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <ConfirmBar
-              message="Deletar permanentemente?"
-              confirmLabel="Deletar"
-              confirmClass="bg-red-500/20 text-red-400 hover:bg-red-500/30"
-              onConfirm={handleDeleteConfirm}
-              onCancel={() => setConfirm(null)}
-            />
-          </motion.div>
-        )}
-        {confirm === 'cancel' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <ConfirmBar
-              message="Cancelar esta tarefa?"
-              confirmLabel="Cancelar tarefa"
-              confirmClass="bg-accent-amber/20 text-accent-amber hover:bg-accent-amber/30"
-              onConfirm={handleCancelConfirm}
-              onCancel={() => setConfirm(null)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaskConfirmModal
+        open={confirm === 'delete'}
+        title="Deletar tarefa"
+        message="Essa ação remove a tarefa permanentemente."
+        confirmLabel="Deletar"
+        confirmClassName="bg-red-500/20 text-red-400 hover:bg-red-500/30"
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setConfirm(null)}
+      />
+
+      <TaskConfirmModal
+        open={confirm === 'cancel'}
+        title="Cancelar tarefa"
+        message="A tarefa será marcada como cancelada e sairá do fluxo ativo."
+        confirmLabel="Cancelar tarefa"
+        confirmClassName="bg-accent-amber/20 text-accent-amber hover:bg-accent-amber/30"
+        onConfirm={handleCancelConfirm}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   )
 }
@@ -538,7 +488,7 @@ function KanbanColumn({ column, tasks }: {
 // ── Kanban board ───────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
-  const { tasks, update, complete, cancel, search, priorityFilter, dueDateFilter } = useTasksStore()
+  const { tasks, update, complete, cancel, search, priorityFilter, dueDateFilter, projectFilter } = useTasksStore()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
@@ -546,6 +496,12 @@ export default function KanbanBoard() {
   )
 
   const filtered = tasks.filter((t) => {
+    if (projectFilter === null) return false
+    if (projectFilter === UNASSIGNED_PROJECT_FILTER) {
+      if (t.projectId) return false
+    } else if (t.projectId !== projectFilter) {
+      return false
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       const matchesSearch =
