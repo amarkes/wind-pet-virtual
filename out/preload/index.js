@@ -83,4 +83,7 @@ const api = {
     }
   }
 };
-electron.contextBridge.exposeInMainWorld("api", api);
+electron.contextBridge.exposeInMainWorld("api", {
+  ...api,
+  platform: process.platform
+});

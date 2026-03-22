@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Sidebar from './components/Layout/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -43,25 +43,37 @@ export default function App() {
 
   const isNotes = page === 'notes'
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-bg-base">
-      <AchievementToast />
-      <Sidebar current={page} onChange={setPage} />
+  const isMac = window.api.platform === 'darwin'
 
-      <main className={`flex-1 overflow-hidden ${isNotes ? '' : 'overflow-y-auto p-6'}`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={page}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.18 }}
-            className={isNotes ? 'h-full' : ''}
-          >
-            {PAGES[page]}
-          </motion.div>
-        </AnimatePresence>
-      </main>
+  return (
+    <div className="flex flex-col h-screen overflow-hidden bg-bg-base">
+      {/* macOS drag region — needed because titleBarStyle:'hiddenInset' covers the native bar */}
+      {isMac && (
+        <div
+          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          className="h-7 flex-shrink-0 bg-bg-base border-b border-bg-border/40"
+        />
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
+        <AchievementToast />
+        <Sidebar current={page} onChange={setPage} />
+
+        <main className={`flex-1 overflow-hidden ${isNotes ? '' : 'overflow-y-auto p-6'}`}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={page}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.18 }}
+              className={isNotes ? 'h-full' : ''}
+            >
+              {PAGES[page]}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   )
 }

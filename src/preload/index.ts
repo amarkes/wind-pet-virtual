@@ -85,4 +85,7 @@ const api: WindowApi = {
   },
 }
 
-contextBridge.exposeInMainWorld('api', api)
+contextBridge.exposeInMainWorld('api', {
+  ...api,
+  platform: process.platform,
+})

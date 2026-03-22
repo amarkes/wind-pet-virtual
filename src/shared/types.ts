@@ -227,6 +227,7 @@ export interface WindowApi {
   dialog: {
     openDirectory: () => Promise<string | null>
   }
+  platform: string
   events: {
     onAchievementUnlocked: (cb: (achievement: Achievement) => void) => () => void
     onPetStateUpdate: (cb: (state: PetStateWithProgress) => void) => () => void
