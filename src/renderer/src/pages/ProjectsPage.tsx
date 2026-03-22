@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Folder, Pencil, Trash2, X, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Plus, Folder, Pencil, Trash2, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useProjectsStore } from '../stores/projects.store'
 import { useTasksStore } from '../stores/tasks.store'
@@ -135,9 +136,143 @@ function TaskRow({ task }: { task: Task }) {
   )
 }
 
+function ProjectDeleteModal({
+  open,
+  project,
+  tasks,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean
+  project: Project
+  tasks: Task[]
+  onConfirm: () => Promise<void>
+  onClose: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleConfirm() {
+    setLoading(true)
+    try {
+      await onConfirm()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={loading ? undefined : onClose}
+          />
+
+          <motion.div
+            key="modal"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none"
+          >
+            <div className="w-full max-w-2xl pointer-events-auto rounded-2xl border border-bg-border bg-bg-card p-5 shadow-2xl">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl border border-red-500/20 bg-red-500/10 p-2">
+                  <AlertTriangle size={18} className="text-red-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base font-semibold text-text-primary">Deletar projeto</h3>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Você está prestes a deletar <span className="font-medium text-text-primary">{project.name}</span>.
+                    Todos os dados relacionados serão perdidos e não há como recuperar depois.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-red-400">Impacto da exclusão</p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  {tasks.length === 0
+                    ? 'Nenhuma tarefa vinculada será removida junto com este projeto.'
+                    : `${tasks.length} tarefa${tasks.length !== 1 ? 's' : ''} vinculada${tasks.length !== 1 ? 's serão removidas' : ' será removida'} permanentemente junto com este projeto.`}
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-text-muted">Tarefas que serão deletadas</p>
+                {tasks.length === 0 ? (
+                  <div className="mt-2 rounded-xl border border-bg-border bg-bg-base/40 p-4 text-sm text-text-muted">
+                    Este projeto não possui tarefas vinculadas.
+                  </div>
+                ) : (
+                  <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-bg-border bg-bg-base/40 p-2">
+                    <div className="flex flex-col gap-1">
+                      {tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <div
+                            className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                              task.status === 'completed' ? 'bg-accent-green' :
+                              task.status === 'cancelled' ? 'bg-bg-border' :
+                              task.status === 'in_progress' ? 'bg-accent-blue' : 'bg-text-muted'
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1 truncate text-text-primary">{task.title}</span>
+                          <span className="flex-shrink-0 text-[11px] text-text-muted">
+                            {task.status === 'pending'
+                              ? 'Pendente'
+                              : task.status === 'in_progress'
+                                ? 'Em progresso'
+                                : task.status === 'completed'
+                                  ? 'Concluída'
+                                  : 'Cancelada'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={loading}
+                  className="btn-ghost rounded-lg px-3 py-1.5 text-sm text-text-muted disabled:opacity-40"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={loading}
+                  className="rounded-lg bg-red-500/20 px-3 py-1.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/30 disabled:opacity-40"
+                >
+                  {loading ? 'Deletando...' : 'Deletar projeto'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body,
+  )
+}
+
 function ProjectCard({ project }: { project: Project }) {
   const { update, remove } = useProjectsStore()
-  const { tasks, update: updateTask } = useTasksStore()
+  const { tasks } = useTasksStore()
   const [editing, setEditing]     = useState(false)
   const [expanded, setExpanded]   = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -151,10 +286,6 @@ function ProjectCard({ project }: { project: Project }) {
   }
 
   async function handleDelete() {
-    // Disassociate tasks before deleting
-    for (const t of projectTasks) {
-      await updateTask(t.id, { projectId: undefined })
-    }
     await remove(project.id)
     setConfirmDelete(false)
   }
@@ -228,20 +359,9 @@ function ProjectCard({ project }: { project: Project }) {
             <button onClick={() => setEditing(true)} className="btn-ghost p-1 rounded" title="Editar">
               <Pencil size={13} />
             </button>
-            {confirmDelete ? (
-              <div className="flex items-center gap-1">
-                <button onClick={handleDelete} className="p-1 rounded text-red-400 hover:bg-red-500/10" title="Confirmar exclusão">
-                  <Check size={13} />
-                </button>
-                <button onClick={() => setConfirmDelete(false)} className="btn-ghost p-1 rounded">
-                  <X size={13} />
-                </button>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} className="btn-danger p-1 rounded" title="Excluir projeto">
-                <Trash2 size={13} />
-              </button>
-            )}
+            <button onClick={() => setConfirmDelete(true)} className="btn-danger p-1 rounded" title="Excluir projeto">
+              <Trash2 size={13} />
+            </button>
           </div>
         </div>
 
@@ -265,6 +385,14 @@ function ProjectCard({ project }: { project: Project }) {
           <p className="text-xs text-text-muted mt-3">Nenhuma tarefa vinculada ainda.</p>
         )}
       </div>
+
+      <ProjectDeleteModal
+        open={confirmDelete}
+        project={project}
+        tasks={projectTasks}
+        onConfirm={handleDelete}
+        onClose={() => setConfirmDelete(false)}
+      />
     </motion.div>
   )
 }

@@ -9,6 +9,7 @@ import type {
 // ── Row mappers ────────────────────────────────────────────────────────────
 
 type Row = Record<string, unknown>
+const PROJECT_COLOR_RE = /^#[0-9A-Fa-f]{6}$/
 
 function toTask(r: Row): Task {
   return {
@@ -70,6 +71,37 @@ function toSettings(r: Row): AppSettings {
     geminiApiKey:        r.gemini_api_key as string,
     workingDirectory:    r.working_directory as string,
     commitAnalysisLimit: r.commit_analysis_limit as number,
+  }
+}
+
+function normalizeProjectFields(data: Pick<Project, 'name' | 'description' | 'color'>): Pick<Project, 'name' | 'description' | 'color'> {
+  return {
+    name: data.name.trim(),
+    description: data.description?.trim() || undefined,
+    color: data.color.trim(),
+  }
+}
+
+function validateProjectFields(data: Pick<Project, 'name' | 'description' | 'color'>): Pick<Project, 'name' | 'description' | 'color'> {
+  const normalized = normalizeProjectFields(data)
+
+  if (!normalized.name) {
+    throw new Error('Project name cannot be empty')
+  }
+
+  if (!PROJECT_COLOR_RE.test(normalized.color)) {
+    throw new Error('Project color must be a valid hex value like #22c55e')
+  }
+
+  return normalized
+}
+
+function withProjectDbError<T>(operation: string, fn: () => T): T {
+  try {
+    return fn()
+  } catch (error) {
+    const details = error instanceof Error ? error.message : 'Unknown database error'
+    throw new Error(`Failed to ${operation} project: ${details}`)
   }
 }
 
@@ -330,30 +362,67 @@ export function isAchievementUnlocked(id: AchievementId): boolean {
 // ── Projects ─────────────────────────────────────────────────────────────────
 
 export function getProjects(): Project[] {
-  return (getDb().prepare('SELECT * FROM projects ORDER BY created_at ASC').all() as Row[]).map(toProject)
+  return withProjectDbError('load', () =>
+    (getDb().prepare('SELECT * FROM projects ORDER BY created_at ASC').all() as Row[]).map(toProject)
+  )
 }
 
 export function createProject(data: CreateProjectInput): Project {
-  const db  = getDb()
-  const id  = randomUUID()
-  const now = new Date().toISOString()
-  db.prepare(
-    'INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)'
-  ).run(id, data.name, data.description ?? null, data.color, now, now)
-  return toProject(db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row)
+  return withProjectDbError('create', () => {
+    const db  = getDb()
+    const id  = randomUUID()
+    const now = new Date().toISOString()
+    const project = validateProjectFields(data)
+
+    db.prepare(
+      'INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)'
+    ).run(id, project.name, project.description ?? null, project.color, now, now)
+
+    return toProject(db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row)
+  })
 }
 
 export function updateProject(id: string, data: Partial<Project>): Project | null {
-  const db  = getDb()
-  const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row | undefined
-  if (!row) return null
-  const p = { ...toProject(row), ...data, updatedAt: new Date().toISOString() }
-  db.prepare(
-    'UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?'
-  ).run(p.name, p.description ?? null, p.color, p.updatedAt, id)
-  return p
+  return withProjectDbError('update', () => {
+    const db  = getDb()
+    const row = db.prepare('SELECT * FROM projects WHERE id = ?').get(id) as Row | undefined
+    if (!row) return null
+
+    const current = toProject(row)
+    const projectFields = validateProjectFields({
+      name: data.name ?? current.name,
+      description: data.description ?? current.description,
+      color: data.color ?? current.color,
+    })
+
+    const updatedProject: Project = {
+      ...current,
+      ...projectFields,
+      updatedAt: new Date().toISOString(),
+    }
+
+    db.prepare(
+      'UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?'
+    ).run(
+      updatedProject.name,
+      updatedProject.description ?? null,
+      updatedProject.color,
+      updatedProject.updatedAt,
+      id,
+    )
+
+    return updatedProject
+  })
 }
 
 export function deleteProject(id: string): boolean {
-  return getDb().prepare('DELETE FROM projects WHERE id = ?').run(id).changes > 0
+  return withProjectDbError('delete', () => {
+    const db = getDb()
+    const removeProjectWithTasks = db.transaction((projectId: string) => {
+      db.prepare('DELETE FROM tasks WHERE project_id = ?').run(projectId)
+      return db.prepare('DELETE FROM projects WHERE id = ?').run(projectId).changes > 0
+    })
+
+    return removeProjectWithTasks(id)
+  })
 }

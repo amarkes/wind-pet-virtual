@@ -238,6 +238,7 @@ function tryMigrate() {
   }
   fs.writeFileSync(MIGRATED_FLAG, (/* @__PURE__ */ new Date()).toISOString());
 }
+const PROJECT_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 function toTask(r) {
   return {
     id: r.id,
@@ -295,6 +296,31 @@ function toSettings(r) {
     workingDirectory: r.working_directory,
     commitAnalysisLimit: r.commit_analysis_limit
   };
+}
+function normalizeProjectFields(data) {
+  return {
+    name: data.name.trim(),
+    description: data.description?.trim() || void 0,
+    color: data.color.trim()
+  };
+}
+function validateProjectFields(data) {
+  const normalized = normalizeProjectFields(data);
+  if (!normalized.name) {
+    throw new Error("Project name cannot be empty");
+  }
+  if (!PROJECT_COLOR_RE.test(normalized.color)) {
+    throw new Error("Project color must be a valid hex value like #22c55e");
+  }
+  return normalized;
+}
+function withProjectDbError(operation, fn) {
+  try {
+    return fn();
+  } catch (error) {
+    const details = error instanceof Error ? error.message : "Unknown database error";
+    throw new Error(`Failed to ${operation} project: ${details}`);
+  }
 }
 function getTasks() {
   return getDb().prepare("SELECT * FROM tasks ORDER BY created_at DESC").all().map(toTask);
@@ -533,29 +559,60 @@ function isAchievementUnlocked(id) {
   return !!row?.unlocked_at;
 }
 function getProjects() {
-  return getDb().prepare("SELECT * FROM projects ORDER BY created_at ASC").all().map(toProject);
+  return withProjectDbError(
+    "load",
+    () => getDb().prepare("SELECT * FROM projects ORDER BY created_at ASC").all().map(toProject)
+  );
 }
 function createProject(data) {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  db.prepare(
-    "INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)"
-  ).run(id, data.name, data.description ?? null, data.color, now, now);
-  return toProject(db.prepare("SELECT * FROM projects WHERE id = ?").get(id));
+  return withProjectDbError("create", () => {
+    const db = getDb();
+    const id = crypto.randomUUID();
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const project = validateProjectFields(data);
+    db.prepare(
+      "INSERT INTO projects (id,name,description,color,created_at,updated_at) VALUES (?,?,?,?,?,?)"
+    ).run(id, project.name, project.description ?? null, project.color, now, now);
+    return toProject(db.prepare("SELECT * FROM projects WHERE id = ?").get(id));
+  });
 }
 function updateProject(id, data) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id);
-  if (!row) return null;
-  const p = { ...toProject(row), ...data, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
-  db.prepare(
-    "UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?"
-  ).run(p.name, p.description ?? null, p.color, p.updatedAt, id);
-  return p;
+  return withProjectDbError("update", () => {
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(id);
+    if (!row) return null;
+    const current = toProject(row);
+    const projectFields = validateProjectFields({
+      name: data.name ?? current.name,
+      description: data.description ?? current.description,
+      color: data.color ?? current.color
+    });
+    const updatedProject = {
+      ...current,
+      ...projectFields,
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    db.prepare(
+      "UPDATE projects SET name=?,description=?,color=?,updated_at=? WHERE id=?"
+    ).run(
+      updatedProject.name,
+      updatedProject.description ?? null,
+      updatedProject.color,
+      updatedProject.updatedAt,
+      id
+    );
+    return updatedProject;
+  });
 }
 function deleteProject(id) {
-  return getDb().prepare("DELETE FROM projects WHERE id = ?").run(id).changes > 0;
+  return withProjectDbError("delete", () => {
+    const db = getDb();
+    const removeProjectWithTasks = db.transaction((projectId) => {
+      db.prepare("DELETE FROM tasks WHERE project_id = ?").run(projectId);
+      return db.prepare("DELETE FROM projects WHERE id = ?").run(projectId).changes > 0;
+    });
+    return removeProjectWithTasks(id);
+  });
 }
 const XP_REWARDS = {
   task_easy: 10,

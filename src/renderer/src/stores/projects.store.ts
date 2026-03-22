@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Project, CreateProjectInput } from '../../../shared/types'
+import { useTasksStore } from './tasks.store'
 
 interface ProjectsStore {
   projects: Project[]
@@ -37,6 +38,11 @@ export const useProjectsStore = create<ProjectsStore>((set, get) => ({
 
   remove: async (id) => {
     await window.api.projects.delete(id)
+    const tasksStore = useTasksStore.getState()
+    tasksStore.setProjectFilter(tasksStore.projectFilter === id ? null : tasksStore.projectFilter)
+    useTasksStore.setState((s) => ({
+      tasks: s.tasks.filter((t) => t.projectId !== id),
+    }))
     set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }))
   },
 
