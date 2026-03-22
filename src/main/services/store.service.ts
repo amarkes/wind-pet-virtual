@@ -34,6 +34,7 @@ const store = new Store<StoreSchema>({
       longBreakMinutes: 15,
       geminiApiKey: '',
       workingDirectory: '',
+      commitAnalysisLimit: 1,
     },
   },
 })

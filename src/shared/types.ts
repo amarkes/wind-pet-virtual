@@ -85,6 +85,7 @@ export interface AppSettings {
   longBreakMinutes: number
   geminiApiKey?: string
   workingDirectory?: string
+  commitAnalysisLimit: number
 }
 
 // ── AI ────────────────────────────────────────────────────────────────────

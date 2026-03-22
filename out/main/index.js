@@ -49,7 +49,8 @@ const store = new Store({
       shortBreakMinutes: 5,
       longBreakMinutes: 15,
       geminiApiKey: "",
-      workingDirectory: ""
+      workingDirectory: "",
+      commitAnalysisLimit: 1
     }
   }
 });

@@ -21,7 +21,7 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function CommitPage() {
   const [repoPath, setRepoPath] = useState('')
-  const [limit, setLimit]       = useState(10)
+  const [limit, setLimit]       = useState(1)
   const [result, setResult]     = useState<CommitAnalysis | null>(null)
 
   const { analyzeCommits, isLoading, error, clearError } = useAIStore()
@@ -30,6 +30,7 @@ export default function CommitPage() {
   useEffect(() => {
     window.api.settings.get().then((s) => {
       if (s.workingDirectory) setRepoPath(s.workingDirectory)
+      if (s.commitAnalysisLimit) setLimit(s.commitAnalysisLimit)
     })
   }, [])
 

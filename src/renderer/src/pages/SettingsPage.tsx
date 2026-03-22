@@ -14,6 +14,7 @@ export default function SettingsPage() {
     longBreakMinutes: 15,
     geminiApiKey: '',
     workingDirectory: '',
+    commitAnalysisLimit: 1,
   })
   const [petName, setPetName]   = useState(pet?.name ?? 'Buddy')
   const [saved, setSaved]       = useState(false)
@@ -117,6 +118,21 @@ export default function SettingsPage() {
           </div>
           <p className="text-[10px] text-text-muted">
             Usado na análise de commits da página Commits.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs text-text-secondary font-medium">Commits a analisar</label>
+          <input
+            type="number"
+            className="input-base w-24"
+            min="1"
+            max="50"
+            value={settings.commitAnalysisLimit}
+            onChange={(e) => set('commitAnalysisLimit', parseInt(e.target.value) || 1)}
+          />
+          <p className="text-[10px] text-text-muted">
+            Padrão 1 (último commit). Aumente para analisar mais — cada commit adicional consome mais tokens.
           </p>
         </div>
       </section>
