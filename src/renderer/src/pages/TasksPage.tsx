@@ -1,20 +1,33 @@
 import { useState } from 'react'
-import { Plus, Search, ArrowUpDown, LayoutList, Columns3 } from 'lucide-react'
-import { useTasksStore, type TaskSort } from '../stores/tasks.store'
+import { Plus, Search, ArrowUpDown, LayoutList, Columns3, SlidersHorizontal, X } from 'lucide-react'
+import { useTasksStore, type TaskSort, type TaskDueDateFilter } from '../stores/tasks.store'
 import TaskList from '../components/Tasks/TaskList'
 import KanbanBoard from '../components/Tasks/KanbanBoard'
 import TaskForm from '../components/Tasks/TaskForm'
 import Button from '../components/ui/Button'
-import type { TaskStatus } from '../../../shared/types'
+import type { TaskStatus, TaskPriority } from '../../../shared/types'
 
 type ViewMode = 'list' | 'kanban'
 
-const FILTERS: { value: TaskStatus | 'all'; label: string }[] = [
+const STATUS_FILTERS: { value: TaskStatus | 'all'; label: string }[] = [
   { value: 'all',         label: 'Todas' },
   { value: 'pending',     label: 'Pendentes' },
   { value: 'in_progress', label: 'Em andamento' },
   { value: 'completed',   label: 'Concluídas' },
   { value: 'cancelled',   label: 'Canceladas' },
+]
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string; cls: string }[] = [
+  { value: 'low',      label: 'Baixa',   cls: 'priority-low' },
+  { value: 'medium',   label: 'Média',   cls: 'priority-medium' },
+  { value: 'high',     label: 'Alta',    cls: 'priority-high' },
+  { value: 'critical', label: 'Crítica', cls: 'priority-critical' },
+]
+
+const DUE_DATE_OPTIONS: { value: NonNullable<TaskDueDateFilter>; label: string }[] = [
+  { value: 'overdue', label: 'Vencidas' },
+  { value: 'today',   label: 'Hoje' },
+  { value: 'week',    label: 'Próximos 7 dias' },
 ]
 
 const SORT_OPTIONS: { value: TaskSort; label: string }[] = [
@@ -24,9 +37,12 @@ const SORT_OPTIONS: { value: TaskSort; label: string }[] = [
 ]
 
 export default function TasksPage() {
-  const { create, filter, setFilter, search, setSearch, sort, setSort, tasks } = useTasksStore()
+  const {
+    create, filter, setFilter, search, setSearch, sort, setSort, tasks,
+    priorityFilter, setPriorityFilter, dueDateFilter, setDueDateFilter,
+  } = useTasksStore()
   const [showForm, setShowForm] = useState(false)
-  const [view, setView] = useState<ViewMode>('kanban')
+  const [view, setView]         = useState<ViewMode>('kanban')
 
   const counts: Record<string, number> = {
     all:         tasks.length,
@@ -34,6 +50,21 @@ export default function TasksPage() {
     in_progress: tasks.filter((t) => t.status === 'in_progress').length,
     completed:   tasks.filter((t) => t.status === 'completed').length,
     cancelled:   tasks.filter((t) => t.status === 'cancelled').length,
+  }
+
+  function togglePriority(p: TaskPriority) {
+    setPriorityFilter(
+      priorityFilter.includes(p)
+        ? priorityFilter.filter((x) => x !== p)
+        : [...priorityFilter, p],
+    )
+  }
+
+  const hasActiveFilters = priorityFilter.length > 0 || dueDateFilter !== null
+
+  function clearFilters() {
+    setPriorityFilter([])
+    setDueDateFilter(null)
   }
 
   return (
@@ -77,7 +108,7 @@ export default function TasksPage() {
         />
       )}
 
-      {/* Search + Sort (list only) */}
+      {/* Search + Sort */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
@@ -105,10 +136,75 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Filters (list only) */}
+      {/* Priority + Due date filters — both views */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 text-[11px] text-text-muted flex-shrink-0">
+          <SlidersHorizontal size={11} />
+          Filtros:
+        </div>
+
+        {/* Priority chips */}
+        {PRIORITY_OPTIONS.map(({ value, label, cls }) => {
+          const active = priorityFilter.includes(value)
+          return (
+            <button
+              key={value}
+              onClick={() => togglePriority(value)}
+              className={`
+                px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                ${active
+                  ? 'bg-primary/20 border-primary/40 text-primary-light'
+                  : 'bg-bg-card border-bg-border text-text-muted hover:text-text-primary hover:border-bg-border/80'
+                }
+              `}
+            >
+              <span className={active ? '' : cls}>{label}</span>
+            </button>
+          )
+        })}
+
+        {/* Divider */}
+        <div className="w-px h-4 bg-bg-border flex-shrink-0" />
+
+        {/* Due date chips */}
+        {DUE_DATE_OPTIONS.map(({ value, label }) => {
+          const active = dueDateFilter === value
+          return (
+            <button
+              key={value}
+              onClick={() => setDueDateFilter(active ? null : value)}
+              className={`
+                px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border
+                ${active
+                  ? value === 'overdue'
+                    ? 'bg-red-500/15 border-red-500/30 text-red-400'
+                    : value === 'today'
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                      : 'bg-primary/20 border-primary/40 text-primary-light'
+                  : 'bg-bg-card border-bg-border text-text-muted hover:text-text-primary hover:border-bg-border/80'
+                }
+              `}
+            >
+              {label}
+            </button>
+          )
+        })}
+
+        {/* Clear filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-text-muted hover:text-text-primary transition-colors"
+          >
+            <X size={10} /> Limpar
+          </button>
+        )}
+      </div>
+
+      {/* Status filters (list only) */}
       {view === 'list' && (
         <div className="flex gap-2 flex-wrap">
-          {FILTERS.map(({ value, label }) => (
+          {STATUS_FILTERS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setFilter(value)}

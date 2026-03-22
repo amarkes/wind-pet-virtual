@@ -1,14 +1,17 @@
 import { create } from 'zustand'
-import type { Task, CreateTaskInput, TaskStatus } from '../../../shared/types'
+import type { Task, CreateTaskInput, TaskStatus, TaskPriority } from '../../../shared/types'
 import { usePetStore } from './pet.store'
 
 export type TaskSort = 'created' | 'priority' | 'dueDate'
+export type TaskDueDateFilter = 'overdue' | 'today' | 'week' | null
 
 interface TasksStore {
   tasks: Task[]
   filter: TaskStatus | 'all'
   search: string
   sort: TaskSort
+  priorityFilter: TaskPriority[]
+  dueDateFilter: TaskDueDateFilter
   isLoading: boolean
 
   load: () => Promise<void>
@@ -23,6 +26,8 @@ interface TasksStore {
   setFilter: (filter: TaskStatus | 'all') => void
   setSearch: (search: string) => void
   setSort: (sort: TaskSort) => void
+  setPriorityFilter: (priorities: TaskPriority[]) => void
+  setDueDateFilter: (filter: TaskDueDateFilter) => void
 
   getFiltered: () => Task[]
   getTodayCount: () => { total: number; completed: number }
@@ -35,6 +40,8 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   filter: 'all',
   search: '',
   sort: 'created',
+  priorityFilter: [],
+  dueDateFilter: null,
   isLoading: false,
 
   load: async () => {
@@ -126,9 +133,11 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
   setFilter: (filter) => set({ filter }),
   setSearch: (search) => set({ search }),
   setSort: (sort) => set({ sort }),
+  setPriorityFilter: (priorities) => set({ priorityFilter: priorities }),
+  setDueDateFilter: (filter) => set({ dueDateFilter: filter }),
 
   getFiltered: () => {
-    const { tasks, filter, search, sort } = get()
+    const { tasks, filter, search, sort, priorityFilter, dueDateFilter } = get()
     let result = filter === 'all' ? tasks : tasks.filter((t) => t.status === filter)
 
     if (search.trim()) {
@@ -139,6 +148,26 @@ export const useTasksStore = create<TasksStore>((set, get) => ({
           t.description?.toLowerCase().includes(q) ||
           t.tags.some((tag) => tag.toLowerCase().includes(q)),
       )
+    }
+
+    if (priorityFilter.length > 0) {
+      result = result.filter((t) => priorityFilter.includes(t.priority))
+    }
+
+    if (dueDateFilter) {
+      const now = new Date()
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 8)
+      result = result.filter((t) => {
+        if (!t.dueDate) return false
+        const hasTime = t.dueDate.includes('T')
+        const due = new Date(hasTime ? t.dueDate : t.dueDate + 'T00:00:00')
+        const diff = Math.floor((due.getTime() - today.getTime()) / 86400000)
+        if (dueDateFilter === 'overdue') return hasTime ? due < now : diff < 0
+        if (dueDateFilter === 'today')   return diff === 0
+        if (dueDateFilter === 'week')    return diff >= 0 && due < nextWeek
+        return true
+      })
     }
 
     result = [...result].sort((a, b) => {

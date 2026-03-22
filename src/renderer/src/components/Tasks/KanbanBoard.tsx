@@ -370,21 +370,99 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
 // ── Droppable column ───────────────────────────────────────────────────────
 
+type ColPriorityFilter = 'all' | 'low' | 'medium' | 'high' | 'critical'
+type ColDueDateFilter  = 'all' | 'overdue' | 'today' | 'week'
+
+function applyColumnFilters(
+  tasks: Task[],
+  priority: ColPriorityFilter,
+  dueDate: ColDueDateFilter,
+): Task[] {
+  let result = tasks
+
+  if (priority !== 'all') {
+    result = result.filter((t) => t.priority === priority)
+  }
+
+  if (dueDate !== 'all') {
+    const now   = new Date()
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 8)
+    result = result.filter((t) => {
+      if (!t.dueDate) return false
+      const hasTime = t.dueDate.includes('T')
+      const due  = new Date(hasTime ? t.dueDate : t.dueDate + 'T00:00:00')
+      const diff = Math.floor((due.getTime() - today.getTime()) / 86400000)
+      if (dueDate === 'overdue') return hasTime ? due < now : diff < 0
+      if (dueDate === 'today')   return diff === 0
+      if (dueDate === 'week')    return diff >= 0 && due < nextWeek
+      return true
+    })
+  }
+
+  return result
+}
+
 function KanbanColumn({ column, tasks }: {
   column: typeof COLUMNS[number]
   tasks: Task[]
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
+  const [colPriority, setColPriority] = useState<ColPriorityFilter>('all')
+  const [colDueDate,  setColDueDate]  = useState<ColDueDateFilter>('all')
+
+  const visible = applyColumnFilters(tasks, colPriority, colDueDate)
+  const filtered = colPriority !== 'all' || colDueDate !== 'all'
 
   return (
     <div className="flex flex-col min-w-0 flex-1">
       {/* Column header */}
-      <div className="flex items-center gap-2 mb-3 px-1">
+      <div className="flex items-center gap-2 mb-2 px-1">
         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${column.dot}`} />
         <span className="text-xs font-semibold text-text-secondary">{column.label}</span>
-        <span className="ml-auto text-[11px] text-text-muted bg-bg-border/50 px-1.5 py-0.5 rounded-full">
-          {tasks.length}
+        <span className={`ml-auto text-[11px] px-1.5 py-0.5 rounded-full ${
+          filtered ? 'bg-primary/20 text-primary-light' : 'bg-bg-border/50 text-text-muted'
+        }`}>
+          {filtered ? `${visible.length}/${tasks.length}` : tasks.length}
         </span>
+      </div>
+
+      {/* Column filters */}
+      <div className="flex gap-1.5 mb-2 px-1">
+        <select
+          value={colPriority}
+          onChange={(e) => setColPriority(e.target.value as ColPriorityFilter)}
+          className={`flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none
+            ${colPriority !== 'all'
+              ? 'border-primary/40 text-primary-light bg-primary/10'
+              : 'border-bg-border text-text-muted hover:border-bg-border/80'
+            }`}
+        >
+          <option value="all">Prioridade</option>
+          <option value="low">Baixa</option>
+          <option value="medium">Média</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </select>
+
+        <select
+          value={colDueDate}
+          onChange={(e) => setColDueDate(e.target.value as ColDueDateFilter)}
+          className={`flex-1 text-[10px] rounded-lg border px-1.5 py-1 bg-bg-card outline-none cursor-pointer transition-colors appearance-none
+            ${colDueDate !== 'all'
+              ? colDueDate === 'overdue'
+                ? 'border-red-500/40 text-red-400 bg-red-500/10'
+                : colDueDate === 'today'
+                  ? 'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                  : 'border-primary/40 text-primary-light bg-primary/10'
+              : 'border-bg-border text-text-muted hover:border-bg-border/80'
+            }`}
+        >
+          <option value="all">Vencimento</option>
+          <option value="overdue">Vencidas</option>
+          <option value="today">Hoje</option>
+          <option value="week">Próx. 7 dias</option>
+        </select>
       </div>
 
       {/* Drop zone */}
@@ -398,12 +476,14 @@ function KanbanColumn({ column, tasks }: {
           }
         `}
       >
-        {tasks.map((task) => (
+        {visible.map((task) => (
           <KanbanCard key={task.id} task={task} />
         ))}
-        {tasks.length === 0 && !isOver && (
+        {visible.length === 0 && !isOver && (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-[11px] text-text-muted/50">Solte aqui</p>
+            <p className="text-[11px] text-text-muted/50">
+              {filtered ? 'Nenhuma tarefa neste filtro' : 'Solte aqui'}
+            </p>
           </div>
         )}
       </div>
@@ -414,21 +494,40 @@ function KanbanColumn({ column, tasks }: {
 // ── Kanban board ───────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
-  const { tasks, update, complete, cancel, search } = useTasksStore()
+  const { tasks, update, complete, cancel, search, priorityFilter, dueDateFilter } = useTasksStore()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
 
-  const filtered = search.trim()
-    ? tasks.filter(
-        (t) =>
-          t.title.toLowerCase().includes(search.toLowerCase()) ||
-          t.description?.toLowerCase().includes(search.toLowerCase()) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase())),
-      )
-    : tasks
+  const filtered = tasks.filter((t) => {
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      const matchesSearch =
+        t.title.toLowerCase().includes(q) ||
+        t.description?.toLowerCase().includes(q) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(q))
+      if (!matchesSearch) return false
+    }
+
+    if (priorityFilter.length > 0 && !priorityFilter.includes(t.priority)) return false
+
+    if (dueDateFilter) {
+      if (!t.dueDate) return false
+      const now = new Date()
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 8)
+      const hasTime = t.dueDate.includes('T')
+      const due = new Date(hasTime ? t.dueDate : t.dueDate + 'T00:00:00')
+      const diff = Math.floor((due.getTime() - today.getTime()) / 86400000)
+      if (dueDateFilter === 'overdue' && !(hasTime ? due < now : diff < 0)) return false
+      if (dueDateFilter === 'today'   && diff !== 0) return false
+      if (dueDateFilter === 'week'    && !(diff >= 0 && due < nextWeek)) return false
+    }
+
+    return true
+  })
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t.id === event.active.id)
