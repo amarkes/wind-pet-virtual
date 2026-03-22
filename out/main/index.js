@@ -918,6 +918,7 @@ function registerAllIpc() {
   registerAchievementsIpc();
   registerSettingsIpc();
 }
+electron.app.setName("ClearUp");
 let mainWindow = null;
 let floatWindow = null;
 function createWindow() {

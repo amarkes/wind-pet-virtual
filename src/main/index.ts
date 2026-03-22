@@ -1,5 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
+
+app.setName('ClearUp')
 import { registerAllIpc } from './ipc'
 import * as focusSvc from './services/focus.service'
 import * as store from './services/store.service'
@@ -27,7 +29,7 @@ function createWindow(): void {
       sandbox: false,
     },
     show: false,
-    icon: join(__dirname, '../../resources/icon.png'),
+    icon: join(__dirname, process.platform === 'darwin' ? '../../resources/icon.icns' : '../../resources/icon.png'),
   })
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
