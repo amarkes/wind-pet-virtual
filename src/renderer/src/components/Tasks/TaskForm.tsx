@@ -27,6 +27,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
   const [difficulty, setDifficulty]     = useState<TaskDifficulty>('medium')
   const [estimated, setEstimated]       = useState('')
   const [dueDate, setDueDate]           = useState(todayYMD())
+  const [dueTime, setDueTime]           = useState('18:00')
   const [tags, setTags]                 = useState<string[]>([])
   const [tagInput, setTagInput]         = useState('')
   const [loading, setLoading]           = useState(false)
@@ -87,7 +88,7 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
       status: 'pending',
       tags,
       estimatedMinutes: estimated ? parseInt(estimated) : undefined,
-      dueDate: dueDate || undefined,
+      dueDate: dueDate ? `${dueDate}T${dueTime}` : undefined,
     })
     setLoading(false)
   }
@@ -247,20 +248,33 @@ export default function TaskForm({ onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          label={`Estimativa (min)${suggestion ? ' ✨' : ''}`}
-          type="number"
-          placeholder="ex: 60"
-          value={estimated}
-          onChange={(e) => setEstimated(e.target.value)}
-          min="1"
-        />
-        <DatePicker
-          label="Vencimento"
-          value={dueDate}
-          onChange={setDueDate}
-        />
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <Input
+            label={`Estimativa (min)${suggestion ? ' ✨' : ''}`}
+            type="number"
+            placeholder="ex: 60"
+            value={estimated}
+            onChange={(e) => setEstimated(e.target.value)}
+            min="1"
+          />
+        </div>
+        <div className="flex-1">
+          <DatePicker
+            label="Vencimento"
+            value={dueDate}
+            onChange={setDueDate}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 w-24">
+          <label className="text-xs text-text-secondary font-medium">Hora</label>
+          <input
+            type="time"
+            value={dueTime}
+            onChange={(e) => setDueTime(e.target.value)}
+            className="input-base text-xs"
+          />
+        </div>
       </div>
 
       {/* Tags */}

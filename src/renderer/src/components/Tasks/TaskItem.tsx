@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task, Subtask } from '../../../../shared/types'
-import TaskEditForm from './TaskEditForm'
+import TaskEditModal from './TaskEditModal'
 import { useAIStore } from '../../stores/ai.store'
 import { useTasksStore } from '../../stores/tasks.store'
 
@@ -25,20 +25,26 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   easy: 'Fácil', medium: 'Média', hard: 'Difícil', epic: 'Épica',
 }
 
+function parseDueDate(dueDate: string): Date {
+  // If already has time component (YYYY-MM-DDTHH:MM), parse as-is (local time)
+  // If date-only (YYYY-MM-DD), append T00:00:00 to avoid UTC interpretation
+  return new Date(dueDate.includes('T') ? dueDate : dueDate + 'T00:00:00')
+}
+
 function getDueDateStatus(dueDate: string, status: string): 'overdue' | 'today' | 'soon' | 'future' | null {
   if (status === 'completed' || status === 'cancelled') return null
-  const due = new Date(dueDate + 'T00:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const due = parseDueDate(dueDate)
+  const now = new Date()
+  if (due < now) return 'overdue'
+  const today = new Date(); today.setHours(0, 0, 0, 0)
   const diff = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff < 0) return 'overdue'
   if (diff === 0) return 'today'
   if (diff <= 2) return 'soon'
   return 'future'
 }
 
 function formatDueDate(dueDate: string): string {
-  const due = new Date(dueDate + 'T00:00:00')
+  const due = parseDueDate(dueDate)
   return due.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
@@ -264,25 +270,11 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
         </div>
       </div>
 
-      {/* Inline edit form */}
-      <AnimatePresence>
-        {editing && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <TaskEditForm
-              task={task}
-              onSubmit={async (data) => {
-                await onEdit(task.id, data)
-                setEditing(false)
-              }}
-              onCancel={() => setEditing(false)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaskEditModal
+        task={editing ? task : null}
+        onSubmit={async (data) => { await onEdit(task.id, data) }}
+        onClose={() => setEditing(false)}
+      />
     </motion.div>
   )
 }

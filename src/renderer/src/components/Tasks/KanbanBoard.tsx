@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTasksStore } from '../../stores/tasks.store'
 import { useAIStore } from '../../stores/ai.store'
-import TaskEditForm from './TaskEditForm'
+import TaskEditModal from './TaskEditModal'
 import type { Task, TaskStatus, Subtask } from '../../../../shared/types'
 
 // ── Column config ──────────────────────────────────────────────────────────
@@ -35,13 +35,18 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 
 function getDueDateBadge(dueDate: string, status: TaskStatus) {
   if (status === 'completed' || status === 'cancelled') return null
-  const due = new Date(dueDate + 'T00:00:00')
+  const hasTime = dueDate.includes('T')
+  const due = new Date(hasTime ? dueDate : dueDate + 'T00:00:00')
+  const now = new Date()
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const diff = Math.floor((due.getTime() - today.getTime()) / 86400000)
-  const label = diff < 0 ? 'Atrasada'
+  // If has explicit time → overdue when that moment has passed
+  // If date-only (legacy) → overdue only when the day has fully passed
+  const isOverdue = hasTime ? due < now : diff < 0
+  const label = isOverdue ? 'Atrasada'
     : diff === 0 ? 'Hoje'
     : due.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  const color = diff < 0 ? 'text-red-400 bg-red-500/10 border-red-500/20'
+  const color = isOverdue ? 'text-red-400 bg-red-500/10 border-red-500/20'
     : diff === 0 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
     : 'text-text-muted bg-bg-border/30 border-bg-border'
   return { label, color }
@@ -82,7 +87,7 @@ function ConfirmBar({
 
 function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id })
-  const { update, remove, complete, cancel, addSubtask, toggleSubtask, removeSubtask } = useTasksStore()
+  const { update, remove, cancel, addSubtask, toggleSubtask, removeSubtask } = useTasksStore()
   const { breakIntoSubtasks, isLoading: aiLoading } = useAIStore()
 
   const [expanded, setExpanded]         = useState(false)
@@ -318,28 +323,11 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
         )}
       </AnimatePresence>
 
-      {/* ── Inline edit form ── */}
-      <AnimatePresence>
-        {editing && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3">
-              <TaskEditForm
-                task={task}
-                onSubmit={async (data) => {
-                  await update(task.id, data)
-                  setEditing(false)
-                }}
-                onCancel={() => setEditing(false)}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <TaskEditModal
+        task={editing ? task : null}
+        onSubmit={async (data) => { await update(task.id, data) }}
+        onClose={() => setEditing(false)}
+      />
 
       {/* ── Confirmation bars ── */}
       <AnimatePresence>

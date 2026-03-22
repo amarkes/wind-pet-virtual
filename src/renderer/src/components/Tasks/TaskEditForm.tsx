@@ -22,7 +22,8 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
   const [priority, setPriority]       = useState<TaskPriority>(task.priority)
   const [difficulty, setDifficulty]   = useState<TaskDifficulty>(task.difficulty)
   const [estimated, setEstimated]     = useState(task.estimatedMinutes?.toString() ?? '')
-  const [dueDate, setDueDate]         = useState(task.dueDate ?? todayYMD())
+  const [dueDate, setDueDate]         = useState(task.dueDate ? task.dueDate.split('T')[0] : todayYMD())
+  const [dueTime, setDueTime]         = useState(task.dueDate?.includes('T') ? task.dueDate.split('T')[1].slice(0, 5) : '18:00')
   const [tags, setTags]               = useState<string[]>(task.tags ?? [])
   const [tagInput, setTagInput]       = useState('')
   const [loading, setLoading]         = useState(false)
@@ -55,7 +56,7 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
       priority,
       difficulty,
       estimatedMinutes: estimated ? parseInt(estimated) : undefined,
-      dueDate: dueDate || undefined,
+      dueDate: dueDate ? `${dueDate}T${dueTime}` : undefined,
       tags,
     })
     setLoading(false)
@@ -115,20 +116,33 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          label="Estimativa (minutos)"
-          type="number"
-          placeholder="ex: 60"
-          value={estimated}
-          onChange={(e) => setEstimated(e.target.value)}
-          min="1"
-        />
-        <DatePicker
-          label="Vencimento"
-          value={dueDate}
-          onChange={setDueDate}
-        />
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <Input
+            label="Estimativa (minutos)"
+            type="number"
+            placeholder="ex: 60"
+            value={estimated}
+            onChange={(e) => setEstimated(e.target.value)}
+            min="1"
+          />
+        </div>
+        <div className="flex-1">
+          <DatePicker
+            label="Vencimento"
+            value={dueDate}
+            onChange={setDueDate}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5 w-24">
+          <label className="text-xs text-text-secondary font-medium">Hora</label>
+          <input
+            type="time"
+            value={dueTime}
+            onChange={(e) => setDueTime(e.target.value)}
+            className="input-base text-xs"
+          />
+        </div>
       </div>
 
       {/* Tags */}
