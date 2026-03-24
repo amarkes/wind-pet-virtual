@@ -124,6 +124,15 @@ function initSchema(): void {
     _db!.exec('ALTER TABLE tasks ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL')
   }
 
+  // Add AI usage tracking columns to settings if missing (schema evolution)
+  const settingsCols = (_db!.pragma('table_info(settings)') as { name: string }[]).map((c) => c.name)
+  if (!settingsCols.includes('ai_requests_date')) {
+    _db!.exec("ALTER TABLE settings ADD COLUMN ai_requests_date TEXT NOT NULL DEFAULT ''")
+  }
+  if (!settingsCols.includes('ai_requests_count')) {
+    _db!.exec('ALTER TABLE settings ADD COLUMN ai_requests_count INTEGER NOT NULL DEFAULT 0')
+  }
+
   if (!_db!.prepare('SELECT 1 FROM pet WHERE id = 1').get()) {
     _db!.prepare(
       'INSERT INTO pet (id,name,mood,xp,level,streak,last_active,weight) VALUES (1,?,?,0,1,0,?,1.0)'

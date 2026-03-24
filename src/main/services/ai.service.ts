@@ -10,14 +10,68 @@ import type {
   TaskDifficulty,
   PetMood,
 } from '../../shared/types'
+import { getAiUsageToday, incrementAiUsage } from './store.service'
 
 const MODEL = 'gemini-2.5-flash'
+
+// ── Rate Limiting ───────────────────────────────────────────────────────────
+
+const RPD_LIMIT = 20
+const RPD_LOW_PRIORITY_RESERVE = 5  // buddySpeak won't fire if remaining budget <= this
+const RPM_LIMIT = 5
+const ONE_MINUTE_MS = 60_000
+
+// Sliding window of request timestamps for RPM tracking (in-memory per session)
+const rpmWindow: number[] = []
+
+function getRpdCountToday(): number {
+  const today = new Date().toISOString().split('T')[0]
+  const usage = getAiUsageToday()
+  return usage.date === today ? usage.count : 0
+}
+
+function purgeRpmWindow(): void {
+  const cutoff = Date.now() - ONE_MINUTE_MS
+  while (rpmWindow.length > 0 && rpmWindow[0] < cutoff) rpmWindow.shift()
+}
+
+async function waitForRpmSlot(): Promise<void> {
+  while (true) {
+    purgeRpmWindow()
+    if (rpmWindow.length < RPM_LIMIT) return
+    const waitMs = ONE_MINUTE_MS - (Date.now() - rpmWindow[0]) + 50
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
+  }
+}
 
 function makeAI(apiKey: string) {
   return new GoogleGenAI({ apiKey })
 }
 
-async function generate(apiKey: string, system: string, prompt: string): Promise<string> {
+interface GenerateOptions {
+  /** If true, the call is skipped when the remaining daily budget is low (used for automatic/background calls). */
+  lowPriority?: boolean
+}
+
+async function generate(apiKey: string, system: string, prompt: string, opts: GenerateOptions = {}): Promise<string> {
+  const usedToday = getRpdCountToday()
+
+  // Low-priority calls (e.g. buddySpeak) are skipped when budget is almost exhausted
+  if (opts.lowPriority && usedToday >= RPD_LIMIT - RPD_LOW_PRIORITY_RESERVE) {
+    return ''
+  }
+
+  if (usedToday >= RPD_LIMIT) {
+    throw new Error(
+      `Limite diário de ${RPD_LIMIT} requisições da API Gemini atingido. Tente novamente amanhã.`,
+    )
+  }
+
+  await waitForRpmSlot()
+
+  rpmWindow.push(Date.now())
+  incrementAiUsage()
+
   const ai = makeAI(apiKey)
   const response = await ai.models.generateContent({
     model: MODEL,
@@ -260,6 +314,7 @@ Regras:
 7. Seja natural, varie o tom — evite sempre começar igual.
 8. Responda APENAS com a frase, sem aspas.`,
     `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`,
+    { lowPriority: true },
   )
 }
 

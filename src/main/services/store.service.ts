@@ -283,6 +283,27 @@ export function updateSettings(data: Partial<AppSettings>): AppSettings {
   return s
 }
 
+// ── AI Usage (RPD tracking) ─────────────────────────────────────────────────
+
+export function getAiUsageToday(): { date: string; count: number } {
+  const row = getDb().prepare(
+    'SELECT ai_requests_date, ai_requests_count FROM settings WHERE id = 1'
+  ).get() as { ai_requests_date: string; ai_requests_count: number }
+  return { date: row.ai_requests_date ?? '', count: row.ai_requests_count ?? 0 }
+}
+
+export function incrementAiUsage(): number {
+  const today = new Date().toISOString().split('T')[0]
+  const db    = getDb()
+  const row   = db.prepare(
+    'SELECT ai_requests_date, ai_requests_count FROM settings WHERE id = 1'
+  ).get() as { ai_requests_date: string; ai_requests_count: number }
+  const newCount = row.ai_requests_date === today ? (row.ai_requests_count ?? 0) + 1 : 1
+  db.prepare('UPDATE settings SET ai_requests_date=?, ai_requests_count=? WHERE id=1')
+    .run(today, newCount)
+  return newCount
+}
+
 // ── Focus Sessions ─────────────────────────────────────────────────────────
 
 export function getFocusSessions(): FocusSession[] {

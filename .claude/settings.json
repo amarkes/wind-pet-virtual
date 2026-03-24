@@ -35,7 +35,10 @@
       "Bash(sips -g pixelWidth -g pixelHeight icon.png)",
       "Bash(magick icon.png.bak -resize 860x860 -gravity center -background transparent -extent 1024x1024 -alpha on icon.png)",
       "Bash(magick identify:*)",
-      "Bash(node -e \"const {app} = require\\(''electron''\\); console.log\\(app.getAppPath\\(\\)\\)\")"
+      "Bash(node -e \"const {app} = require\\(''electron''\\); console.log\\(app.getAppPath\\(\\)\\)\")",
+      "Bash(grep -r \"queue\\\\|Queue\\\\|QUEUE\\\\|delay\\\\|Delay\\\\|throttle\\\\|Throttle\\\\|rpm\\\\|RPM\\\\|timeout\\\\|Timeout\" /Users/antonio.ma.neto/random/pet/src --include=*.ts --include=*.tsx)",
+      "Bash(grep -r \"generateContent\\\\|GoogleGenAI\\\\|@google/genai\" /Users/antonio.ma.neto/random/pet/src --include=*.ts --include=*.tsx -B 5 -A 10)",
+      "Bash(find /Users/antonio.ma.neto/random/pet -name .env* -o -name env.example)"
     ]
   }
 }

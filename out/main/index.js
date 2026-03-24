@@ -131,6 +131,13 @@ function initSchema() {
   if (!taskCols.includes("project_id")) {
     _db.exec("ALTER TABLE tasks ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL");
   }
+  const settingsCols = _db.pragma("table_info(settings)").map((c) => c.name);
+  if (!settingsCols.includes("ai_requests_date")) {
+    _db.exec("ALTER TABLE settings ADD COLUMN ai_requests_date TEXT NOT NULL DEFAULT ''");
+  }
+  if (!settingsCols.includes("ai_requests_count")) {
+    _db.exec("ALTER TABLE settings ADD COLUMN ai_requests_count INTEGER NOT NULL DEFAULT 0");
+  }
   if (!_db.prepare("SELECT 1 FROM pet WHERE id = 1").get()) {
     _db.prepare(
       "INSERT INTO pet (id,name,mood,xp,level,streak,last_active,weight) VALUES (1,?,?,0,1,0,?,1.0)"
@@ -491,6 +498,22 @@ function updateSettings(data) {
     "UPDATE settings SET user_name=?,gemini_api_key=?,working_directory=?,commit_analysis_limit=? WHERE id=1"
   ).run(s.userName, s.geminiApiKey ?? "", s.workingDirectory ?? "", s.commitAnalysisLimit);
   return s;
+}
+function getAiUsageToday() {
+  const row = getDb().prepare(
+    "SELECT ai_requests_date, ai_requests_count FROM settings WHERE id = 1"
+  ).get();
+  return { date: row.ai_requests_date ?? "", count: row.ai_requests_count ?? 0 };
+}
+function incrementAiUsage() {
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT ai_requests_date, ai_requests_count FROM settings WHERE id = 1"
+  ).get();
+  const newCount = row.ai_requests_date === today ? (row.ai_requests_count ?? 0) + 1 : 1;
+  db.prepare("UPDATE settings SET ai_requests_date=?, ai_requests_count=? WHERE id=1").run(today, newCount);
+  return newCount;
 }
 function getFocusSessions() {
   return getDb().prepare("SELECT * FROM focus_sessions ORDER BY started_at DESC").all().map((r) => ({
@@ -937,10 +960,44 @@ function registerPetIpc() {
   });
 }
 const MODEL = "gemini-2.5-flash";
+const RPD_LIMIT = 20;
+const RPD_LOW_PRIORITY_RESERVE = 5;
+const RPM_LIMIT = 5;
+const ONE_MINUTE_MS = 6e4;
+const rpmWindow = [];
+function getRpdCountToday() {
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const usage = getAiUsageToday();
+  return usage.date === today ? usage.count : 0;
+}
+function purgeRpmWindow() {
+  const cutoff = Date.now() - ONE_MINUTE_MS;
+  while (rpmWindow.length > 0 && rpmWindow[0] < cutoff) rpmWindow.shift();
+}
+async function waitForRpmSlot() {
+  while (true) {
+    purgeRpmWindow();
+    if (rpmWindow.length < RPM_LIMIT) return;
+    const waitMs = ONE_MINUTE_MS - (Date.now() - rpmWindow[0]) + 50;
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+}
 function makeAI(apiKey) {
   return new genai.GoogleGenAI({ apiKey });
 }
-async function generate(apiKey, system, prompt) {
+async function generate(apiKey, system, prompt, opts = {}) {
+  const usedToday = getRpdCountToday();
+  if (opts.lowPriority && usedToday >= RPD_LIMIT - RPD_LOW_PRIORITY_RESERVE) {
+    return "";
+  }
+  if (usedToday >= RPD_LIMIT) {
+    throw new Error(
+      `Limite diário de ${RPD_LIMIT} requisições da API Gemini atingido. Tente novamente amanhã.`
+    );
+  }
+  await waitForRpmSlot();
+  rpmWindow.push(Date.now());
+  incrementAiUsage();
   const ai = makeAI(apiKey);
   const response = await ai.models.generateContent({
     model: MODEL,
@@ -1122,7 +1179,8 @@ Regras:
 6. Máximo 12 palavras em português brasileiro.
 7. Seja natural, varie o tom — evite sempre começar igual.
 8. Responda APENAS com a frase, sem aspas.`,
-    `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`
+    `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`,
+    { lowPriority: true }
   );
 }
 async function noteToTasks(apiKey, content) {
