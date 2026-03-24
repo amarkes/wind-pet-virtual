@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, useSensor, useSensors,
@@ -7,7 +8,7 @@ import { useDroppable, useDraggable } from '@dnd-kit/core'
 import {
   CalendarClock, Clock, GripVertical,
   ChevronDown, ChevronUp, Pencil, Trash2, XCircle,
-  CheckSquare, Square, X, Sparkles, Loader2,
+  CheckSquare, Square, X, Sparkles, Loader2, Copy, CheckCheck,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UNASSIGNED_PROJECT_FILTER, useTasksStore } from '../../stores/tasks.store'
@@ -65,6 +66,14 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
   const [editing, setEditing]           = useState(false)
   const [breakingDown, setBreakingDown] = useState(false)
   const [confirm, setConfirm]           = useState<'delete' | 'cancel' | null>(null)
+  const [copied, setCopied]             = useState(false)
+
+  function copyDescription() {
+    if (!task.description) return
+    navigator.clipboard.writeText(task.description)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const style = transform && !overlay
     ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
@@ -179,7 +188,7 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
       {/* ── Title ── */}
       <div className="px-3 pt-1.5 pb-2">
-        <span className={`text-xs font-semibold leading-snug break-words ${
+        <span className={`text-xs font-semibold leading-snug break-words select-text ${
           done      ? 'line-through text-text-muted' :
           cancelled ? 'text-text-muted'              : 'text-text-primary'
         }`}>
@@ -249,9 +258,23 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
           >
             <div className="px-3 pb-3 flex flex-col gap-2 border-t border-bg-border/50 pt-2">
               {task.description && (
-                <p className="text-xs text-text-secondary leading-relaxed select-text cursor-text">
-                  {task.description}
-                </p>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Descrição</span>
+                    <button
+                      type="button"
+                      onClick={copyDescription}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-text-muted hover:text-text-primary transition-colors"
+                      title="Copiar markdown"
+                    >
+                      {copied ? <CheckCheck size={11} className="text-accent-green" /> : <Copy size={11} />}
+                      {copied ? 'Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="markdown-preview select-text cursor-text">
+                    <ReactMarkdown>{task.description}</ReactMarkdown>
+                  </div>
+                </div>
               )}
               {subtasks.length > 0 && (
                 <div className="flex flex-col gap-1">

@@ -27,13 +27,14 @@ const path = require("path");
 const crypto = require("crypto");
 const Database = require("better-sqlite3");
 const fs = require("fs");
+const dotenv = require("dotenv");
 const genai = require("@google/genai");
 const simpleGit = require("simple-git");
+const projectRoot = electron.app.isPackaged ? path.join(path.dirname(electron.app.getPath("exe")), "..", "..", "..", "..", "..") : path.join(__dirname, "..", "..");
+dotenv.config({ path: path.join(projectRoot, ".env") });
 function resolveDataDir() {
-  if (electron.app.isPackaged) {
-    return path.join(path.dirname(electron.app.getPath("exe")), "..", "..", "..", "data");
-  }
-  return path.join(electron.app.getAppPath(), "data");
+  if (!process.env.DATA_DIR_FIXED) throw new Error("DATA_DIR_FIXED is not set in .env");
+  return process.env.DATA_DIR_FIXED;
 }
 const DATA_DIR = resolveDataDir();
 const DB_PATH = path.join(DATA_DIR, "buddy.db");

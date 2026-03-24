@@ -91,4 +91,27 @@
   .difficulty-medium { @apply badge bg-accent-blue/10 text-accent-blue; }
   .difficulty-hard   { @apply badge bg-primary/10 text-primary-light; }
   .difficulty-epic   { @apply badge bg-accent-pink/10 text-accent-pink; }
+
+  /* Markdown preview */
+  .markdown-preview { @apply text-xs text-text-secondary leading-relaxed; user-select: text; }
+  .markdown-preview h1,
+  .markdown-preview h2,
+  .markdown-preview h3 { @apply font-semibold text-text-primary mb-1 mt-2; }
+  .markdown-preview h1 { @apply text-sm; }
+  .markdown-preview h2 { @apply text-xs; }
+  .markdown-preview h3 { @apply text-xs; }
+  .markdown-preview p  { @apply mb-1; }
+  .markdown-preview ul,
+  .markdown-preview ol { @apply pl-4 mb-1; }
+  .markdown-preview li { @apply mb-0.5; }
+  .markdown-preview ul > li { list-style-type: disc; }
+  .markdown-preview ol > li { list-style-type: decimal; }
+  .markdown-preview code { @apply font-mono bg-bg-base px-1 py-0.5 rounded text-primary-light text-[11px]; }
+  .markdown-preview pre  { @apply bg-bg-base rounded-lg p-2 mb-1 overflow-x-auto; }
+  .markdown-preview pre code { @apply bg-transparent p-0; }
+  .markdown-preview strong { @apply font-semibold text-text-primary; }
+  .markdown-preview em { @apply italic; }
+  .markdown-preview blockquote { @apply border-l-2 border-primary/40 pl-2 text-text-muted italic; }
+  .markdown-preview a { @apply text-primary-light underline; }
+  .markdown-preview hr { @apply border-bg-border my-2; }
 }

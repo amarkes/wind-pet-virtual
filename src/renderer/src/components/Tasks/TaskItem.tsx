@@ -2,8 +2,9 @@ import { useState } from 'react'
 import {
   Check, Trash2, ChevronDown, ChevronUp, Clock,
   Pencil, XCircle, Sparkles, Loader2, CheckSquare, Square, X,
-  CalendarClock, Folder,
+  CalendarClock, Folder, Copy, CheckCheck,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Task, Subtask } from '../../../../shared/types'
 import TaskEditModal from './TaskEditModal'
@@ -54,6 +55,14 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
   const [expanded, setExpanded]         = useState(false)
   const [editing, setEditing]           = useState(false)
   const [breakingDown, setBreakingDown] = useState(false)
+  const [copied, setCopied]             = useState(false)
+
+  function copyDescription() {
+    if (!task.description) return
+    navigator.clipboard.writeText(task.description)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const done      = task.status === 'completed'
   const cancelled = task.status === 'cancelled'
@@ -123,7 +132,7 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-medium ${done || cancelled ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+            <span className={`text-sm font-medium select-text ${done || cancelled ? 'line-through text-text-muted' : 'text-text-primary'}`}>
               {task.title}
             </span>
             {cancelled && (
@@ -188,7 +197,23 @@ export default function TaskItem({ task, onComplete, onDelete, onCancel, onEdit 
                 className="overflow-hidden"
               >
                 {task.description && (
-                  <p className="text-xs text-text-secondary mt-2">{task.description}</p>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-text-muted font-medium uppercase tracking-wide">Descrição</span>
+                      <button
+                        type="button"
+                        onClick={copyDescription}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-text-muted hover:text-text-primary transition-colors"
+                        title="Copiar markdown"
+                      >
+                        {copied ? <CheckCheck size={11} className="text-accent-green" /> : <Copy size={11} />}
+                        {copied ? 'Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                    <div className="markdown-preview select-text cursor-text">
+                      <ReactMarkdown>{task.description}</ReactMarkdown>
+                    </div>
+                  </div>
                 )}
 
                 {subtasks.length > 0 && (

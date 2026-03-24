@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
-import { X, Tag } from 'lucide-react'
+import { X, Tag, ChevronDown, ChevronUp } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
@@ -30,6 +31,7 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
   const [tagInput, setTagInput]       = useState('')
   const [projectId, setProjectId]     = useState<string>(task.projectId ?? '')
   const [loading, setLoading]         = useState(false)
+  const [descPreview, setDescPreview] = useState(false)
 
   const { projects } = useProjectsStore()
 
@@ -84,13 +86,47 @@ export default function TaskEditForm({ task, onSubmit, onCancel }: Props) {
         autoFocus
       />
 
-      <textarea
-        placeholder="Descrição (opcional)..."
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        rows={2}
-        className="input-base resize-none"
-      />
+      <div className="flex flex-col gap-0 rounded-lg border border-bg-border overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-bg-card border-b border-bg-border">
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setDescPreview(false)}
+              className={`px-2.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                !descPreview ? 'bg-primary/20 text-primary-light' : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              Escrever
+            </button>
+            <button
+              type="button"
+              onClick={() => setDescPreview(true)}
+              className={`px-2.5 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                descPreview ? 'bg-primary/20 text-primary-light' : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              Pré-visualizar
+            </button>
+          </div>
+        </div>
+        {descPreview ? (
+          <div className="markdown-preview px-3 py-2 min-h-[3.5rem] overflow-y-auto">
+            {description.trim() ? (
+              <ReactMarkdown>{description}</ReactMarkdown>
+            ) : (
+              <span className="text-text-muted italic">Nenhuma descrição.</span>
+            )}
+          </div>
+        ) : (
+          <textarea
+            placeholder="Descrição (opcional)... Suporta Markdown"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="w-full bg-bg-base px-3 py-2 text-text-primary placeholder:text-text-muted text-sm outline-none resize-y min-h-[3.5rem]"
+          />
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">

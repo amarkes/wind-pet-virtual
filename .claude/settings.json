@@ -23,7 +23,19 @@
       "Bash(pip3 install:*)",
       "Bash(python3 -c \"from PIL import Image; print\\(''ok''\\)\")",
       "Bash(brew install:*)",
-      "Bash(convert --version)"
+      "Bash(convert --version)",
+      "Bash(npm list:*)",
+      "Bash(sqlite3 data/buddy.db \"SELECT COUNT\\(*\\) FROM tasks;\")",
+      "Bash(sqlite3 data/buddy.db \"SELECT COUNT\\(*\\) FROM notes;\")",
+      "Bash(sqlite3 /Users/antonio.ma.neto/random/pet/dist/mac/data/buddy.db \"SELECT COUNT\\(*\\) FROM tasks;\")",
+      "Bash(sips -g pixelWidth -g pixelHeight /Users/antonio.ma.neto/random/pet/resources/icon.icns)",
+      "Bash(iconutil --help)",
+      "Bash(cp icon.png icon.png.bak)",
+      "Bash(magick icon.png -resize 860x860 -gravity center -background none -extent 1024x1024 icon.png)",
+      "Bash(sips -g pixelWidth -g pixelHeight icon.png)",
+      "Bash(magick icon.png.bak -resize 860x860 -gravity center -background transparent -extent 1024x1024 -alpha on icon.png)",
+      "Bash(magick identify:*)",
+      "Bash(node -e \"const {app} = require\\(''electron''\\); console.log\\(app.getAppPath\\(\\)\\)\")"
     ]
   }
 }

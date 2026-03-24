@@ -2,17 +2,23 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join, dirname } from 'path'
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs'
+import { config as loadEnv } from 'dotenv'
 import type { Task, Note, PetState, AppSettings, AuditLog, FocusSession, Achievement } from '../../shared/types'
 
+// ── Load .env from project root (works in both dev and packaged) ────────────
+// Dev:  __dirname = out/main  → ../../ = project root
+// Prod: exe = dist/mac/Buddy.app/Contents/MacOS/Buddy → 5x .. = project root
+const projectRoot = app.isPackaged
+  ? join(dirname(app.getPath('exe')), '..', '..', '..', '..', '..')
+  : join(__dirname, '..', '..')
+loadEnv({ path: join(projectRoot, '.env') })
+
 // ── Data directory ─────────────────────────────────────────────────────────
-// Dev:  {project_root}/data/
-// Prod: {folder containing Buddy.app}/data/
+// Always use the fixed project data directory (dev and prod share the same DB).
+// Set DATA_DIR_FIXED in .env to configure.
 function resolveDataDir(): string {
-  if (app.isPackaged) {
-    // exe = Buddy.app/Contents/MacOS/Buddy → go up 3 levels to reach the folder that holds Buddy.app
-    return join(dirname(app.getPath('exe')), '..', '..', '..', 'data')
-  }
-  return join(app.getAppPath(), 'data')
+  if (!process.env.DATA_DIR_FIXED) throw new Error('DATA_DIR_FIXED is not set in .env')
+  return process.env.DATA_DIR_FIXED
 }
 
 const DATA_DIR      = resolveDataDir()
