@@ -50,7 +50,6 @@ const api: Omit<WindowApi, 'platform'> = {
     dailyReview:       ()                    => ipcRenderer.invoke('ai:dailyReview'),
     noteToTasks:       (content)             => ipcRenderer.invoke('ai:noteToTasks', content),
     summarizeNote:     (content)             => ipcRenderer.invoke('ai:summarizeNote', content),
-    buddySpeak:        (ctx)                 => ipcRenderer.invoke('ai:buddySpeak', ctx),
   },
   focus: {
     getSummaries:       (days)  => ipcRenderer.invoke('focus:getSummaries', days),

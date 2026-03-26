@@ -47,7 +47,7 @@ export default function Pet() {
     if (pet) {
       refreshMessage(true)
     }
-  }, [pet, projectFilter, refreshMessage])
+  }, [pet?.name, projectFilter, refreshMessage])
 
   function handlePetClick() {
     if (mood !== 'dancing') triggerMoodTemporary('dancing', 6000)

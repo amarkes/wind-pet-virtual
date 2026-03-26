@@ -1,14 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Trash2, Pin, PinOff, Sparkles, Loader2, ListTodo, FileText } from 'lucide-react'
+import { Trash2, Pin, PinOff, Sparkles, Loader2, ListTodo, FileText, FolderOpen } from 'lucide-react'
 import { useNotesStore } from '../../stores/notes.store'
 import { useTasksStore } from '../../stores/tasks.store'
 import { useAIStore } from '../../stores/ai.store'
+import { useProjectsStore } from '../../stores/projects.store'
 import Button from '../ui/Button'
+import type { AINoteTaskSuggestion, TaskDifficulty, TaskPriority } from '../../../../shared/types'
+
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low: 'Baixa',
+  medium: 'Média',
+  high: 'Alta',
+  critical: 'Crítica',
+}
+
+const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
+  easy: 'Fácil',
+  medium: 'Média',
+  hard: 'Difícil',
+  epic: 'Épica',
+}
 
 export default function NoteEditor() {
   const { getSelected, update, remove } = useNotesStore()
   const { create: createTask } = useTasksStore()
   const { noteToTasks, summarizeNote, isLoading: aiLoading } = useAIStore()
+  const { projects } = useProjectsStore()
 
   const note = getSelected()
 
@@ -16,7 +33,8 @@ export default function NoteEditor() {
   const [content, setContent] = useState('')
   const [summary, setSummary] = useState('')
   const [aiMode, setAiMode]   = useState<null | 'summary' | 'tasks'>(null)
-  const [extractedTasks, setExtractedTasks] = useState<string[]>([])
+  const [extractedTasks, setExtractedTasks] = useState<AINoteTaskSuggestion[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState('')
 
   useEffect(() => {
     setTitle(note?.title ?? '')
@@ -24,6 +42,7 @@ export default function NoteEditor() {
     setSummary('')
     setAiMode(null)
     setExtractedTasks([])
+    setSelectedProjectId('')
   }, [note?.id])
 
   if (!note) {
@@ -52,29 +71,37 @@ export default function NoteEditor() {
   async function handleExtractTasks() {
     if (!content.trim()) return
     setAiMode('tasks')
-    const titles = await noteToTasks(content)
-    setExtractedTasks(titles)
+    const tasks = await noteToTasks(content)
+    setExtractedTasks(tasks)
   }
 
-  async function handleCreateTask(taskTitle: string) {
+  async function handleCreateTask(task: AINoteTaskSuggestion) {
+    if (!selectedProjectId) return
     await createTask({
-      title: taskTitle,
+      title: task.title,
+      description: task.description,
       status: 'pending',
-      priority: 'medium',
-      difficulty: 'medium',
-      tags: [],
+      priority: task.priority,
+      difficulty: task.difficulty,
+      estimatedMinutes: task.estimatedMinutes,
+      tags: task.tags,
+      projectId: selectedProjectId,
     })
-    setExtractedTasks((prev) => prev.filter((t) => t !== taskTitle))
+    setExtractedTasks((prev) => prev.filter((candidate) => candidate !== task))
   }
 
   async function handleCreateAllTasks() {
-    for (const t of extractedTasks) {
+    if (!selectedProjectId) return
+    for (const task of extractedTasks) {
       await createTask({
-        title: t,
+        title: task.title,
+        description: task.description,
         status: 'pending',
-        priority: 'medium',
-        difficulty: 'medium',
-        tags: [],
+        priority: task.priority,
+        difficulty: task.difficulty,
+        estimatedMinutes: task.estimatedMinutes,
+        tags: task.tags,
+        projectId: selectedProjectId,
       })
     }
     setExtractedTasks([])
@@ -145,30 +172,84 @@ export default function NoteEditor() {
 
       {aiMode === 'tasks' && extractedTasks.length > 0 && (
         <div className="mx-5 mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3 gap-2">
             <p className="text-xs font-medium text-primary-light flex items-center gap-1.5">
               <Sparkles size={12} /> {extractedTasks.length} tarefas encontradas
             </p>
             <div className="flex gap-1.5">
               <button
                 onClick={handleCreateAllTasks}
-                className="text-[10px] text-primary-light hover:underline font-medium"
+                disabled={!selectedProjectId || projects.length === 0}
+                className="text-[10px] text-primary-light hover:underline font-medium disabled:opacity-40 disabled:no-underline"
               >
                 Criar todas
               </button>
               <button onClick={() => setAiMode(null)} className="text-text-muted hover:text-text-primary text-xs">✕</button>
             </div>
           </div>
-          <div className="flex flex-col gap-1">
-            {extractedTasks.map((t) => (
-              <div key={t} className="flex items-center gap-2">
-                <span className="text-xs text-text-secondary flex-1 truncate">{t}</span>
-                <button
-                  onClick={() => handleCreateTask(t)}
-                  className="text-[10px] text-primary-light hover:underline font-medium flex-shrink-0"
-                >
-                  + criar
-                </button>
+
+          <div className="mb-3 flex flex-col gap-1.5">
+            <label className="text-[11px] font-medium text-text-secondary">Projeto de destino</label>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-text-muted">
+                <FolderOpen size={13} />
+              </div>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="input-base text-xs"
+              >
+                <option value="">Selecione um projeto antes de criar</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {projects.length === 0 ? (
+              <p className="text-[11px] text-accent-amber">Crie um projeto antes de transformar notas em tarefas.</p>
+            ) : !selectedProjectId ? (
+              <p className="text-[11px] text-text-muted">A criação individual e em lote fica habilitada depois que você escolher um projeto.</p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {extractedTasks.map((task, index) => (
+              <div key={`${task.title}-${index}`} className="rounded-lg border border-primary/15 bg-bg-card/80 p-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-text-primary">{task.title}</p>
+                    {task.description && (
+                      <p className="mt-1 text-[11px] text-text-secondary leading-relaxed">{task.description}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-border text-text-secondary">
+                        {PRIORITY_LABELS[task.priority]}
+                      </span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-border text-text-secondary">
+                        {DIFFICULTY_LABELS[task.difficulty]}
+                      </span>
+                      {task.estimatedMinutes && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-border text-text-secondary">
+                          {task.estimatedMinutes} min
+                        </span>
+                      )}
+                      {task.tags.map((tag) => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary-light">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCreateTask(task)}
+                    disabled={!selectedProjectId || projects.length === 0}
+                    className="text-[10px] text-primary-light hover:underline font-medium flex-shrink-0 disabled:opacity-40 disabled:no-underline"
+                  >
+                    + criar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

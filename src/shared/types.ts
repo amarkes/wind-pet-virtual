@@ -111,6 +111,15 @@ export interface AISuggestion {
   suggestedTags?: string[]
 }
 
+export interface AINoteTaskSuggestion {
+  title: string
+  description?: string
+  priority: TaskPriority
+  difficulty: TaskDifficulty
+  estimatedMinutes?: number
+  tags: string[]
+}
+
 export interface CommitReview {
   issues: string[]
   suggestions: string[]
@@ -235,9 +244,8 @@ export interface WindowApi {
     breakIntoSubtasks: (taskTitle: string, taskDescription?: string) => Promise<string[]>
     analyzeCommits: (repoPath: string, limit?: number) => Promise<CommitAnalysis>
     dailyReview: () => Promise<DailyReview>
-    noteToTasks: (content: string) => Promise<string[]>
+    noteToTasks: (content: string) => Promise<AINoteTaskSuggestion[]>
     summarizeNote: (content: string) => Promise<string>
-    buddySpeak: (ctx: { mood: string; name: string; level: number; streak: number; hour: number; completedToday: number; overdueCount: number; pendingCount: number; inProgressCount: number }) => Promise<string | null>
   }
   focus: {
     getSummaries: (days?: number) => Promise<DayFocusSummary[]>

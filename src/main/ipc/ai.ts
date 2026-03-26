@@ -54,10 +54,4 @@ export function registerAiIpc(): void {
     const apiKey = getApiKey()
     return ai.summarizeNote(apiKey, content)
   })
-
-  ipcMain.handle('ai:buddySpeak', async (_, ctx: ai.BuddySpeakContext) => {
-    const settings = store.getSettings()
-    if (!settings.geminiApiKey) return null   // graceful — no key, no AI message
-    return ai.buddySpeak(settings.geminiApiKey, ctx)
-  })
 }

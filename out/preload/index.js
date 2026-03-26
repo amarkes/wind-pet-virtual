@@ -48,8 +48,7 @@ const api = {
     analyzeCommits: (repoPath, limit) => electron.ipcRenderer.invoke("ai:analyzeCommits", repoPath, limit),
     dailyReview: () => electron.ipcRenderer.invoke("ai:dailyReview"),
     noteToTasks: (content) => electron.ipcRenderer.invoke("ai:noteToTasks", content),
-    summarizeNote: (content) => electron.ipcRenderer.invoke("ai:summarizeNote", content),
-    buddySpeak: (ctx) => electron.ipcRenderer.invoke("ai:buddySpeak", ctx)
+    summarizeNote: (content) => electron.ipcRenderer.invoke("ai:summarizeNote", content)
   },
   focus: {
     getSummaries: (days) => electron.ipcRenderer.invoke("focus:getSummaries", days),

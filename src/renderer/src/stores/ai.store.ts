@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AISuggestion, CommitAnalysis, DailyReview } from '../../../shared/types'
+import type { AISuggestion, AINoteTaskSuggestion, CommitAnalysis, DailyReview } from '../../../shared/types'
 
 const COMMIT_STORAGE_KEY = 'lastCommitAnalysis'
 const REVIEW_STORAGE_KEY = 'lastDailyReview'
@@ -27,7 +27,7 @@ interface AIStore {
   breakIntoSubtasks: (title: string, description?: string) => Promise<string[]>
   analyzeCommits: (repoPath: string, limit?: number) => Promise<CommitAnalysis | null>
   dailyReview: () => Promise<DailyReview | null>
-  noteToTasks: (content: string) => Promise<string[]>
+  noteToTasks: (content: string) => Promise<AINoteTaskSuggestion[]>
   summarizeNote: (content: string) => Promise<string>
   clearError: () => void
 }

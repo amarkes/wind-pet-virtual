@@ -961,7 +961,6 @@ function registerPetIpc() {
 }
 const MODEL = "gemini-2.5-flash";
 const RPD_LIMIT = 20;
-const RPD_LOW_PRIORITY_RESERVE = 5;
 const RPM_LIMIT = 5;
 const ONE_MINUTE_MS = 6e4;
 const rpmWindow = [];
@@ -985,11 +984,8 @@ async function waitForRpmSlot() {
 function makeAI(apiKey) {
   return new genai.GoogleGenAI({ apiKey });
 }
-async function generate(apiKey, system, prompt, opts = {}) {
+async function generate(apiKey, system, prompt) {
   const usedToday = getRpdCountToday();
-  if (opts.lowPriority && usedToday >= RPD_LIMIT - RPD_LOW_PRIORITY_RESERVE) {
-    return "";
-  }
   if (usedToday >= RPD_LIMIT) {
     throw new Error(
       `Limite diário de ${RPD_LIMIT} requisições da API Gemini atingido. Tente novamente amanhã.`
@@ -1153,48 +1149,44 @@ ${tasksSummary}`
     tasksOverdue: overdue.length
   };
 }
-async function buddySpeak(apiKey, ctx) {
-  const period = ctx.hour < 12 ? "manhã" : ctx.hour < 18 ? "tarde" : "noite";
-  const activityParts = [];
-  if (ctx.completedToday > 0) activityParts.push(`${ctx.completedToday} tarefa(s) concluída(s) hoje`);
-  if (ctx.inProgressCount > 0) activityParts.push(`${ctx.inProgressCount} em andamento`);
-  if (ctx.overdueCount > 0) activityParts.push(`${ctx.overdueCount} atrasada(s)`);
-  if (ctx.pendingCount > 0) activityParts.push(`${ctx.pendingCount} pendente(s)`);
-  const activity = activityParts.length > 0 ? activityParts.join(", ") : "sem tarefas registradas";
-  return generate(
-    apiKey,
-    `Você é ${ctx.name}, um pet virtual fofo de um desenvolvedor. Personalidade: carinhosa, espontânea, às vezes engraçada, nunca robótica.
-
-Contexto real do usuário agora:
-- Humor atual: ${ctx.mood}
-- Nível: ${ctx.level}, streak: ${ctx.streak} dias, período: ${period}
-- Atividade de hoje: ${activity}
-
-Regras:
-1. Comente DIRETAMENTE sobre o que o usuário fez ou precisa fazer — nunca fale de forma genérica.
-2. Se concluiu muitas tarefas: celebre com entusiasmo específico.
-3. Se tem tarefas atrasadas: mencione de forma gentil, motivadora.
-4. Se está em andamento: incentive a finalizar.
-5. Se não fez nada ainda: motive sem cobrar.
-6. Máximo 12 palavras em português brasileiro.
-7. Seja natural, varie o tom — evite sempre começar igual.
-8. Responda APENAS com a frase, sem aspas.`,
-    `Gere fala: mood=${ctx.mood}, hora=${ctx.hour}h, atividade="${activity}"`,
-    { lowPriority: true }
-  );
-}
 async function noteToTasks(apiKey, content) {
   const text = await generate(
     apiKey,
-    `Você é um assistente que extrai tarefas acionáveis de notas em texto livre.
-Identifique ações concretas, afazeres e compromissos no texto.
-Responda apenas com JSON: array de strings com os títulos das tarefas em português, sem markdown.
-Se não houver tarefas claras, retorne array vazio [].`,
+    `Você é um assistente que transforma notas soltas em tarefas de produto ou desenvolvimento bem definidas.
+Identifique apenas ações concretas, entregáveis e compromissos realmente executáveis.
+
+Responda apenas com JSON válido, sem markdown, no formato:
+[
+  {
+    "title": "título curto, claro e acionável em português",
+    "description": "resumo objetivo da tarefa com contexto suficiente para executar, em até 2 frases",
+    "priority": "low" | "medium" | "high" | "critical",
+    "difficulty": "easy" | "medium" | "hard" | "epic",
+    "estimatedMinutes": número inteiro positivo,
+    "tags": ["tag1", "tag2"]
+  }
+]
+
+Regras:
+- Não copie linhas inteiras da nota sem normalizar; reescreva como tarefa profissional e acionável.
+- O título deve começar com verbo implícito de ação e não pode ser apenas uma frase solta da nota.
+- A descrição deve condensar o contexto relevante, não repetir a nota inteira.
+- Gere de 0 a 6 tarefas.
+- Use de 1 a 4 tags curtas em minúsculas.
+- Se o texto não tiver tarefas claras, retorne [].`,
     `Extraia tarefas desta nota:
 
 ${content}`
   );
-  return JSON.parse(text);
+  const parsed = JSON.parse(text);
+  return parsed.map((task) => ({
+    title: task.title?.trim() ?? "",
+    description: task.description?.trim() || void 0,
+    priority: task.priority ?? "medium",
+    difficulty: task.difficulty ?? "medium",
+    estimatedMinutes: task.estimatedMinutes && task.estimatedMinutes > 0 ? Math.round(task.estimatedMinutes) : void 0,
+    tags: Array.isArray(task.tags) ? task.tags.map((tag) => String(tag).trim().toLowerCase()).filter(Boolean).slice(0, 4) : []
+  })).filter((task) => task.title.length > 0);
 }
 async function summarizeNote(apiKey, content) {
   return generate(
@@ -1249,11 +1241,6 @@ function registerAiIpc() {
   electron.ipcMain.handle("ai:summarizeNote", async (_, content) => {
     const apiKey = getApiKey();
     return summarizeNote(apiKey, content);
-  });
-  electron.ipcMain.handle("ai:buddySpeak", async (_, ctx) => {
-    const settings = getSettings();
-    if (!settings.geminiApiKey) return null;
-    return buddySpeak(settings.geminiApiKey, ctx);
   });
 }
 let activeSessionId = null;
