@@ -1,14 +1,14 @@
-import { LayoutDashboard, CheckSquare, FileText, Settings, History, GitCommit, BarChart2, Focus, Trophy, Folder } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, FileText, Settings, History, GitCommit, BarChart2, Focus, Trophy, Folder, Shield } from 'lucide-react'
 import Pet from '../Pet/Pet'
 
-type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements' | 'tower-defense'
 
 interface Props {
   current: Page
   onChange: (page: Page) => void
 }
 
-const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard; section: 'main' | 'v2' | 'v3' }[] = [
+const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard; section: 'main' | 'v2' | 'v3' | 'arcade' }[] = [
   { id: 'dashboard',    label: 'Dashboard',   icon: LayoutDashboard, section: 'main' },
   { id: 'tasks',        label: 'Tarefas',     icon: CheckSquare,     section: 'main' },
   { id: 'projects',     label: 'Projetos',    icon: Folder,          section: 'main' },
@@ -18,6 +18,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard; sectio
   { id: 'audit',        label: 'Auditoria',   icon: History,         section: 'v2'   },
   { id: 'focus',        label: 'Foco',        icon: Focus,           section: 'v3'   },
   { id: 'achievements', label: 'Conquistas',  icon: Trophy,          section: 'v3'   },
+  { id: 'tower-defense', label: 'Tower Defense', icon: Shield,       section: 'arcade' },
   { id: 'settings',     label: 'Config',      icon: Settings,        section: 'main' },
 ]
 
@@ -25,11 +26,12 @@ export default function Sidebar({ current, onChange }: Props) {
   const mainItems = NAV_ITEMS.filter((i) => i.section === 'main')
   const v2Items   = NAV_ITEMS.filter((i) => i.section === 'v2')
   const v3Items   = NAV_ITEMS.filter((i) => i.section === 'v3')
+  const arcadeItems = NAV_ITEMS.filter((i) => i.section === 'arcade')
 
   return (
     <aside className="w-52 flex-shrink-0 bg-bg-base border-r border-bg-border flex flex-col h-full">
       {/* Pet area — fixed height so animations never push the nav */}
-      <div className="h-[280px] flex-shrink-0 border-b border-bg-border overflow-hidden">
+      <div className="h-[320px] flex-shrink-0 border-b border-bg-border overflow-hidden">
         <Pet />
       </div>
 
@@ -56,6 +58,15 @@ export default function Sidebar({ current, onChange }: Props) {
           </span>
         </div>
         {v3Items.map(({ id, label, icon: Icon }) => (
+          <NavButton key={id} id={id} label={label} Icon={Icon} active={current === id} onChange={onChange} />
+        ))}
+
+        <div className="mt-3 mb-1 px-2">
+          <span className="text-[9px] font-semibold text-text-muted uppercase tracking-widest flex items-center gap-1">
+            🎮 Arcade
+          </span>
+        </div>
+        {arcadeItems.map(({ id, label, icon: Icon }) => (
           <NavButton key={id} id={id} label={label} Icon={Icon} active={current === id} onChange={onChange} />
         ))}
       </nav>

@@ -11,6 +11,7 @@ import DailyReviewPage from './pages/DailyReviewPage'
 import FocusPage from './pages/FocusPage'
 import AchievementsPage from './pages/AchievementsPage'
 import ProjectsPage from './pages/ProjectsPage'
+import TowerDefensePage from './pages/TowerDefensePage'
 import AchievementToast from './components/AchievementToast'
 import { usePetStore } from './stores/pet.store'
 import { useTasksStore } from './stores/tasks.store'
@@ -18,7 +19,7 @@ import { useNotesStore } from './stores/notes.store'
 import { useTagColorsStore } from './stores/tagColors.store'
 import { useProjectsStore } from './stores/projects.store'
 
-type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements'
+type Page = 'dashboard' | 'tasks' | 'projects' | 'notes' | 'settings' | 'audit' | 'commits' | 'review' | 'focus' | 'achievements' | 'tower-defense'
 
 const PAGES: Record<Page, JSX.Element> = {
   dashboard:    <Dashboard />,
@@ -31,6 +32,7 @@ const PAGES: Record<Page, JSX.Element> = {
   review:       <DailyReviewPage />,
   focus:        <FocusPage />,
   achievements: <AchievementsPage />,
+  'tower-defense': <TowerDefensePage />,
 }
 
 export default function App() {
