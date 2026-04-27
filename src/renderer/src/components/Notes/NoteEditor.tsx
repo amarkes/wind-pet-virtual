@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trash2, Pin, PinOff, Sparkles, Loader2, ListTodo, FileText, FolderOpen } from 'lucide-react'
+import { Trash2, Pin, PinOff, Sparkles, Loader2, ListTodo, FileText, FolderOpen, AlertCircle, X } from 'lucide-react'
 import { useNotesStore } from '../../stores/notes.store'
 import { useTasksStore } from '../../stores/tasks.store'
 import { useAIStore } from '../../stores/ai.store'
@@ -24,7 +24,7 @@ const DIFFICULTY_LABELS: Record<TaskDifficulty, string> = {
 export default function NoteEditor() {
   const { getSelected, update, remove } = useNotesStore()
   const { create: createTask } = useTasksStore()
-  const { noteToTasks, summarizeNote, isLoading: aiLoading } = useAIStore()
+  const { noteToTasks, summarizeNote, isLoading: aiLoading, error: aiError, clearError } = useAIStore()
   const { projects } = useProjectsStore()
 
   const note = getSelected()
@@ -157,6 +157,17 @@ export default function NoteEditor() {
           </Button>
         </div>
       </div>
+
+      {/* AI error banner */}
+      {aiError && (
+        <div className="mx-5 mt-4 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+          <AlertCircle size={13} className="mt-0.5 flex-shrink-0 text-red-400" />
+          <p className="flex-1 text-[11px] text-red-300 leading-snug">{aiError}</p>
+          <button type="button" onClick={clearError} className="flex-shrink-0 text-red-400 hover:text-red-200 transition-colors">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* AI result panels */}
       {aiMode === 'summary' && summary && (

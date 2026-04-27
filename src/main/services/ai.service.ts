@@ -48,6 +48,24 @@ function makeAI(apiKey: string) {
   return new GoogleGenAI({ apiKey })
 }
 
+const RETRYABLE_CODES = [503, 429, 500, 502, 504]
+const MAX_RETRIES = 3
+
+function isRetryableError(err: unknown): boolean {
+  if (err instanceof Error) {
+    const msg = err.message
+    try {
+      const parsed = JSON.parse(msg.replace(/^ApiError:\s*/, '')) as { error?: { code?: number } }
+      const code = parsed?.error?.code
+      if (code && RETRYABLE_CODES.includes(code)) return true
+    } catch {
+      // not a JSON error message
+    }
+    if (/503|429|502|504|unavailable|overloaded|quota/i.test(msg)) return true
+  }
+  return false
+}
+
 async function generate(apiKey: string, system: string, prompt: string): Promise<string> {
   const usedToday = getRpdCountToday()
 
@@ -63,12 +81,25 @@ async function generate(apiKey: string, system: string, prompt: string): Promise
   incrementAiUsage()
 
   const ai = makeAI(apiKey)
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: prompt,
-    config: { systemInstruction: system },
-  })
-  return (response.text ?? '').trim().replace(/^```json\n?|\n?```$/g, '')
+
+  let lastError: unknown
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: MODEL,
+        contents: prompt,
+        config: { systemInstruction: system },
+      })
+      return (response.text ?? '').trim().replace(/^```json\n?|\n?```$/g, '')
+    } catch (err) {
+      lastError = err
+      if (!isRetryableError(err) || attempt === MAX_RETRIES - 1) break
+      const delayMs = 2 ** attempt * 1_000 + Math.random() * 500
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+
+  throw lastError
 }
 
 // ── Task Suggestion ────────────────────────────────────────────────────────

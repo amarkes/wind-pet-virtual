@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
-import { X, Sparkles, Loader2, Tag, Check, Wand2, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Sparkles, Loader2, Tag, Check, Wand2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import Button from '../ui/Button'
 import Input from '../ui/Input'
@@ -41,7 +41,7 @@ export default function TaskForm({ onSubmit, onCancel, fixedProjectId, lockProje
   const [descPreview, setDescPreview]   = useState(false)
   const [descExpanded, setDescExpanded] = useState(false)
 
-  const { suggestTask, isLoading: aiLoading } = useAIStore()
+  const { suggestTask, isLoading: aiLoading, error: aiError, clearError } = useAIStore()
   const { projects } = useProjectsStore()
 
   async function handleSuggest() {
@@ -137,6 +137,17 @@ export default function TaskForm({ onSubmit, onCancel, fixedProjectId, lockProje
           IA
         </button>
       </div>
+
+      {/* AI error banner */}
+      {aiError && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+          <AlertCircle size={13} className="mt-0.5 flex-shrink-0 text-red-400" />
+          <p className="flex-1 text-[11px] text-red-300 leading-snug">{aiError}</p>
+          <button type="button" onClick={clearError} className="flex-shrink-0 text-red-400 hover:text-red-200 transition-colors">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* AI suggestions panel */}
       {suggestion && (
